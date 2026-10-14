@@ -1,0 +1,83 @@
+name: scale-08
+layout: diamonds
+seed: 42
+range: 130.0
+dataplane: neighbour_udp
+peers: static
+params:
+  jq_jitter: 0.0
+  hop_delay: 0.0
+  jr_delay: 0.0
+link_presets:
+  baseline_ms: 0
+  wan_ms: 5-20
+  optional_loss: 1%
+  note: Apply in GNS3 link settings; agents keep impairment off.
+expect:
+  fg_size_band:
+  - 1
+  - 4
+  delivery_ratio_min: 0.9
+nodes:
+- id: 0
+  x: 0
+  y: 0
+  impl: python
+  peers:
+  - 1
+  - 2
+- id: 1
+  x: 100
+  y: 60
+  impl: java
+  peers:
+  - 0
+  - 2
+  - 3
+- id: 2
+  x: 100
+  y: -60
+  impl: python
+  peers:
+  - 0
+  - 1
+  - 4
+- id: 3
+  x: 200
+  y: 60
+  impl: java
+  peers:
+  - 1
+  - 4
+  - 5
+- id: 4
+  x: 200
+  y: -60
+  impl: python
+  peers:
+  - 2
+  - 3
+  - 5
+- id: 5
+  x: 300
+  y: 0
+  impl: java
+  peers:
+  - 3
+  - 4
+  - 6
+  - 7
+- id: 6
+  x: 400
+  y: 40
+  impl: python
+  peers:
+  - 5
+  - 7
+- id: 7
+  x: 400
+  y: -40
+  impl: java
+  peers:
+  - 5
+  - 6

@@ -1,0 +1,255 @@
+{
+  "name": "odmrp-scale-08",
+  "type": "topology",
+  "revision": 9,
+  "version": "2.2.0",
+  "zoom": 100,
+  "scene_width": 2000,
+  "scene_height": 2000,
+  "nodes": [
+    {
+      "node_id": "0",
+      "name": "n0",
+      "x": 0,
+      "y": 0,
+      "symbol": ":/symbols/docker_guest.svg",
+      "node_type": "docker",
+      "properties": {
+        "image": "odmrp/node-python:local"
+      }
+    },
+    {
+      "node_id": "1",
+      "name": "n1",
+      "x": 100,
+      "y": 60,
+      "symbol": ":/symbols/docker_guest.svg",
+      "node_type": "docker",
+      "properties": {
+        "image": "odmrp/node-java:local"
+      }
+    },
+    {
+      "node_id": "2",
+      "name": "n2",
+      "x": 100,
+      "y": -60,
+      "symbol": ":/symbols/docker_guest.svg",
+      "node_type": "docker",
+      "properties": {
+        "image": "odmrp/node-python:local"
+      }
+    },
+    {
+      "node_id": "3",
+      "name": "n3",
+      "x": 200,
+      "y": 60,
+      "symbol": ":/symbols/docker_guest.svg",
+      "node_type": "docker",
+      "properties": {
+        "image": "odmrp/node-java:local"
+      }
+    },
+    {
+      "node_id": "4",
+      "name": "n4",
+      "x": 200,
+      "y": -60,
+      "symbol": ":/symbols/docker_guest.svg",
+      "node_type": "docker",
+      "properties": {
+        "image": "odmrp/node-python:local"
+      }
+    },
+    {
+      "node_id": "5",
+      "name": "n5",
+      "x": 300,
+      "y": 0,
+      "symbol": ":/symbols/docker_guest.svg",
+      "node_type": "docker",
+      "properties": {
+        "image": "odmrp/node-java:local"
+      }
+    },
+    {
+      "node_id": "6",
+      "name": "n6",
+      "x": 400,
+      "y": 40,
+      "symbol": ":/symbols/docker_guest.svg",
+      "node_type": "docker",
+      "properties": {
+        "image": "odmrp/node-python:local"
+      }
+    },
+    {
+      "node_id": "7",
+      "name": "n7",
+      "x": 400,
+      "y": -40,
+      "symbol": ":/symbols/docker_guest.svg",
+      "node_type": "docker",
+      "properties": {
+        "image": "odmrp/node-java:local"
+      }
+    }
+  ],
+  "links": [
+    {
+      "nodes": [
+        {
+          "node_id": "0",
+          "adapter_number": 0,
+          "port_number": 0
+        },
+        {
+          "node_id": "1",
+          "adapter_number": 0,
+          "port_number": 0
+        }
+      ]
+    },
+    {
+      "nodes": [
+        {
+          "node_id": "0",
+          "adapter_number": 0,
+          "port_number": 0
+        },
+        {
+          "node_id": "2",
+          "adapter_number": 0,
+          "port_number": 0
+        }
+      ]
+    },
+    {
+      "nodes": [
+        {
+          "node_id": "1",
+          "adapter_number": 0,
+          "port_number": 0
+        },
+        {
+          "node_id": "2",
+          "adapter_number": 0,
+          "port_number": 0
+        }
+      ]
+    },
+    {
+      "nodes": [
+        {
+          "node_id": "1",
+          "adapter_number": 0,
+          "port_number": 0
+        },
+        {
+          "node_id": "3",
+          "adapter_number": 0,
+          "port_number": 0
+        }
+      ]
+    },
+    {
+      "nodes": [
+        {
+          "node_id": "2",
+          "adapter_number": 0,
+          "port_number": 0
+        },
+        {
+          "node_id": "4",
+          "adapter_number": 0,
+          "port_number": 0
+        }
+      ]
+    },
+    {
+      "nodes": [
+        {
+          "node_id": "3",
+          "adapter_number": 0,
+          "port_number": 0
+        },
+        {
+          "node_id": "4",
+          "adapter_number": 0,
+          "port_number": 0
+        }
+      ]
+    },
+    {
+      "nodes": [
+        {
+          "node_id": "3",
+          "adapter_number": 0,
+          "port_number": 0
+        },
+        {
+          "node_id": "5",
+          "adapter_number": 0,
+          "port_number": 0
+        }
+      ]
+    },
+    {
+      "nodes": [
+        {
+          "node_id": "4",
+          "adapter_number": 0,
+          "port_number": 0
+        },
+        {
+          "node_id": "5",
+          "adapter_number": 0,
+          "port_number": 0
+        }
+      ]
+    },
+    {
+      "nodes": [
+        {
+          "node_id": "5",
+          "adapter_number": 0,
+          "port_number": 0
+        },
+        {
+          "node_id": "6",
+          "adapter_number": 0,
+          "port_number": 0
+        }
+      ]
+    },
+    {
+      "nodes": [
+        {
+          "node_id": "5",
+          "adapter_number": 0,
+          "port_number": 0
+        },
+        {
+          "node_id": "7",
+          "adapter_number": 0,
+          "port_number": 0
+        }
+      ]
+    },
+    {
+      "nodes": [
+        {
+          "node_id": "6",
+          "adapter_number": 0,
+          "port_number": 0
+        },
+        {
+          "node_id": "7",
+          "adapter_number": 0,
+          "port_number": 0
+        }
+      ]
+    }
+  ]
+}

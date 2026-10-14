@@ -1,0 +1,11 @@
+# FakeNode stub appliance until a real Rust ODMRP port lands (issue #4).
+FROM python:3.12-slim
+WORKDIR /app
+COPY backend/pyproject.toml ./backend/
+COPY backend/odmrp_sim ./backend/odmrp_sim
+RUN pip install --no-cache-dir ./backend
+COPY docker/odmrp-node/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENV ODMRP_IMPL=fake
+LABEL odmrp.impl=rust odmrp.stub=true
+ENTRYPOINT ["/entrypoint.sh"]

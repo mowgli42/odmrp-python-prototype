@@ -1,0 +1,27 @@
+node_id: 5
+impl: java
+listen: 0.0.0.0:9000
+pos:
+  x: 400.0
+  y: 200.0
+range: 130.0
+rng_seed: 5087
+params:
+  route_refresh_interval: 3.0
+  fg_timeout: 9.0
+  route_timeout: 9.0
+  jq_jitter: 0.0
+  jr_delay: 0.0
+  hop_delay: 0.0
+peers:
+  '3': 10.32.0.13:9000
+  '4': 10.32.0.14:9000
+script:
+- at: 0.0
+  op: join
+  group: demo
+trace: /traces/node-5.jsonl
+agent_loss: 0.0
+agent_delay: 0.0
+dataplane: neighbour_udp
+java_jar: /opt/odmrp/odmrp-java-node.jar

@@ -1,0 +1,23 @@
+node_id: 2
+impl: python
+listen: 0.0.0.0:9000
+pos:
+  x: 200.0
+  y: 280.0
+range: 130.0
+rng_seed: 2060
+params:
+  route_refresh_interval: 3.0
+  fg_timeout: 9.0
+  route_timeout: 9.0
+  jq_jitter: 0.0
+  jr_delay: 0.0
+  hop_delay: 0.0
+peers:
+  '0': 10.32.0.10:9000
+  '4': 10.32.0.14:9000
+script: []
+trace: /traces/node-2.jsonl
+agent_loss: 0.0
+agent_delay: 0.0
+dataplane: neighbour_udp
