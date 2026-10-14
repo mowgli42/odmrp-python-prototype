@@ -63,6 +63,10 @@ A swim-lane view of the JSONL trace — one lane per node, one marker per event,
 - Colours above must pass WCAG AA on white; the amber halo is decorative and always paired with the `FG` text badge.
 - Nothing in the UI computes protocol state; if a value cannot be read from `NodeState` or an event, it is a backend gap to fix (add it to the schema), not a frontend derivation.
 
+## IxDF network-status strip (shipped)
+
+The live UI adds a compact **Network status** band under the toolbar (visibility of system status): connection, mode, clock, scenario, mesh health (idle / forming / established / expiring), node & link counts, members, FG set + soft-state countdown, next Join Query, packets in flight, deliveries, drops (dup / !fg), and last event. Labels and icons accompany colour so meaning is not colour-only.
+
 ## Regenerating previews
 
 ```bash
