@@ -23,7 +23,7 @@
 <section class="trace">
   <h2>Trace</h2>
   <ol>
-    {#each recent as e (e.seq)}
+    {#each recent as e, i (`${e.seq}-${e.kind}-${e.node}-${i}`)}
       <li>
         <span class="t">{e.t.toFixed(3)}</span>
         <span class="kind">{e.kind}</span>
