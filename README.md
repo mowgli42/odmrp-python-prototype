@@ -29,6 +29,18 @@ cd ../backend && JAVA_HOME=~/tools/jdk python -m pytest tests/unit/test_java_ref
 The simulator can back any node with `impl=java` via `ExternalProcessNode`
 (`SimulationEngine(default_impl="java")` or per-node YAML `impl: java`).
 
+### Docker / GNS3 mixed meshes (issue #4)
+
+Neighbour-UDP dataplane (no IP multicast), local images, agent impairment off:
+
+```bash
+python3 scripts/gen_basic_mesh_udp_configs.py
+docker compose -f docker/compose/basic-mesh-mixed/docker-compose.yml up --build --abort-on-container-exit
+python3 scripts/diff_traces.py docker/compose/basic-mesh-mixed/traces --expect-delivered 3,5
+```
+
+GNS3 appliances and scale labs (8–128): see `gns3/README.md`.
+
 ## Purpose
 - Observable, deterministic simulation of ODMRP (mesh-based forwarding group, soft-state, Join Query / Join Reply).
 - Interactive Svelte frontend showing nodes, links, FG membership, and live traffic.

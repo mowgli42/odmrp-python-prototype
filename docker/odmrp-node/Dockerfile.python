@@ -1,0 +1,9 @@
+FROM python:3.12-slim
+WORKDIR /app
+COPY backend/pyproject.toml ./backend/
+COPY backend/odmrp_sim ./backend/odmrp_sim
+RUN pip install --no-cache-dir ./backend
+COPY docker/odmrp-node/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENV ODMRP_IMPL=python
+ENTRYPOINT ["/entrypoint.sh"]

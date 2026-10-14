@@ -1,0 +1,22 @@
+{
+  "name": "odmrp-node-rust-stub",
+  "category": "guest",
+  "description": "ODMRP neighbour-UDP agent (fake) \u2014 local Docker image",
+  "vendor_name": "odmrp-python-prototype",
+  "vendor_url": "https://github.com/mowgli42/odmrp-python-prototype",
+  "product_name": "odmrp-node-rust-stub",
+  "registry_version": 3,
+  "status": "experimental",
+  "maintainer": "mowgli42",
+  "usage": "Import after `docker build` of odmrp/node-*:local. Agent impairment off; set delay on GNS3 links.",
+  "docker": {
+    "adapters": 1,
+    "image": "odmrp/node-rust:local",
+    "console_type": "telnet",
+    "extra_hosts": [],
+    "environment": [
+      "ODMRP_IMPL=fake",
+      "ODMRP_UNTIL=3600"
+    ]
+  }
+}

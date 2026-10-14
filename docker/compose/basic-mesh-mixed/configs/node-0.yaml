@@ -1,0 +1,28 @@
+node_id: 0
+impl: python
+listen: 0.0.0.0:9000
+pos:
+  x: 100.0
+  y: 200.0
+range: 130.0
+rng_seed: 42
+params:
+  route_refresh_interval: 3.0
+  fg_timeout: 9.0
+  route_timeout: 9.0
+  jq_jitter: 0.0
+  jr_delay: 0.0
+  hop_delay: 0.0
+peers:
+  '1': 10.32.0.11:9000
+  '2': 10.32.0.12:9000
+script:
+- at: 4.0
+  op: text
+  group: demo
+  text: ODMRP works
+  message_id: basic-mesh-msg
+trace: /traces/node-0.jsonl
+agent_loss: 0.0
+agent_delay: 0.0
+dataplane: neighbour_udp

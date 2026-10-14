@@ -1,0 +1,107 @@
+# 6-node basic-mesh smoke: Python + Java mixed, neighbour UDP, agent impairment off.
+# From repo root:
+#   python3 scripts/gen_basic_mesh_udp_configs.py
+#   docker compose -f docker/compose/basic-mesh-mixed/docker-compose.yml up --build --abort-on-container-exit
+#   python3 scripts/diff_traces.py docker/compose/basic-mesh-mixed/traces --expect-delivered 3,5
+name: odmrp-basic-mesh-mixed
+
+x-python: &python-build
+  build:
+    context: ../../..
+    dockerfile: docker/odmrp-node/Dockerfile.python
+  image: odmrp/node-python:local
+
+x-java: &java-build
+  build:
+    context: ../../..
+    dockerfile: docker/odmrp-node/Dockerfile.java
+  image: odmrp/node-java:local
+
+x-node-env: &node-env
+  ODMRP_UNTIL: "12"
+
+services:
+  odmrp-0:
+    <<: *python-build
+    environment:
+      <<: *node-env
+      ODMRP_CONFIG: /config/node.yaml
+      ODMRP_IMPL: python
+    volumes:
+      - ./configs/node-0.yaml:/config/node.yaml:ro
+      - ./traces:/traces
+    networks:
+      mesh:
+        ipv4_address: 10.32.0.10
+
+  odmrp-1:
+    <<: *java-build
+    environment:
+      <<: *node-env
+      ODMRP_CONFIG: /config/node.yaml
+      ODMRP_IMPL: java
+    volumes:
+      - ./configs/node-1.yaml:/config/node.yaml:ro
+      - ./traces:/traces
+    networks:
+      mesh:
+        ipv4_address: 10.32.0.11
+
+  odmrp-2:
+    <<: *python-build
+    environment:
+      <<: *node-env
+      ODMRP_CONFIG: /config/node.yaml
+      ODMRP_IMPL: python
+    volumes:
+      - ./configs/node-2.yaml:/config/node.yaml:ro
+      - ./traces:/traces
+    networks:
+      mesh:
+        ipv4_address: 10.32.0.12
+
+  odmrp-3:
+    <<: *java-build
+    environment:
+      <<: *node-env
+      ODMRP_CONFIG: /config/node.yaml
+      ODMRP_IMPL: java
+    volumes:
+      - ./configs/node-3.yaml:/config/node.yaml:ro
+      - ./traces:/traces
+    networks:
+      mesh:
+        ipv4_address: 10.32.0.13
+
+  odmrp-4:
+    <<: *python-build
+    environment:
+      <<: *node-env
+      ODMRP_CONFIG: /config/node.yaml
+      ODMRP_IMPL: python
+    volumes:
+      - ./configs/node-4.yaml:/config/node.yaml:ro
+      - ./traces:/traces
+    networks:
+      mesh:
+        ipv4_address: 10.32.0.14
+
+  odmrp-5:
+    <<: *java-build
+    environment:
+      <<: *node-env
+      ODMRP_CONFIG: /config/node.yaml
+      ODMRP_IMPL: java
+    volumes:
+      - ./configs/node-5.yaml:/config/node.yaml:ro
+      - ./traces:/traces
+    networks:
+      mesh:
+        ipv4_address: 10.32.0.15
+
+networks:
+  mesh:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.32.0.0/24
