@@ -36,13 +36,13 @@ stateDiagram-v2
 ```mermaid
 stateDiagram-v2
   [*] --> Idle
-  Idle --> Querying : originate(group, payload)<br/>seq += 1; send DATA with Join Query header (piggybacked);<br/>arm route_refresh = now + ROUTE_REFRESH_INTERVAL
+  Idle --> Querying : originate(group, payload)<br/>seq += 1 / send DATA with Join Query header (piggybacked)<br/>arm route_refresh = now + ROUTE_REFRESH_INTERVAL
   Querying --> Established : Join Reply received with entry (sender == self)
   Established --> Established : originate() → send DATA (no header)
   Querying --> Querying : originate() → send DATA (no header)
   Established --> Refreshing : route_refresh fires
   Querying --> Refreshing : route_refresh fires
-  Refreshing --> Querying : data queued or sent within SOURCE_IDLE_TIMEOUT<br/>seq += 1; send Join Query (piggybacked if data queued, else standalone);<br/>re-arm route_refresh
+  Refreshing --> Querying : data queued or sent within SOURCE_IDLE_TIMEOUT<br/>seq += 1 / send Join Query (piggybacked if data queued, else standalone)<br/>re-arm route_refresh
   Refreshing --> Idle : no data for SOURCE_IDLE_TIMEOUT<br/>stop refreshing (soft leave)
   note right of Established
     "Established" is observational only (UI badge);
@@ -58,7 +58,7 @@ stateDiagram-v2
   NonMember --> MemberPending : set_membership(group, true)<br/>emit state.member
   MemberPending --> MemberActive : Join Query for group received<br/>→ Join Reply originated after JR_DELAY
   MemberActive --> MemberActive : each new Join Query → new Join Reply
-  MemberActive --> NonMember : set_membership(group, false)<br/>(no leave packet; FG nodes expire upstream)
+  MemberActive --> NonMember : set_membership(group, false)<br/>(no leave packet / FG nodes expire upstream)
   MemberPending --> NonMember : set_membership(group, false)
   note right of MemberPending
     Visible in the UI as "pending": the node will not receive data

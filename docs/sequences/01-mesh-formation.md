@@ -29,14 +29,14 @@ sequenceDiagram
   S->>A: DATA+JQ(src=0, seq=1, prev=0)
   S->>B: DATA+JQ(src=0, seq=1, prev=0)
 
-  Note over A: cache (0,1); route[0]=(next=0, seq=1)<br/>not member → no JR; hop=1, ttl=31
+  Note over A: cache (0,1) / route[0]=(next=0, seq=1)<br/>not member → no JR / hop=1, ttl=31
   A->>S: DATA+JQ(prev=1)  — duplicate at 0, dropped
   A->>R1: DATA+JQ(prev=1)
-  Note over B: cache (0,1); route[0]=(next=0)
+  Note over B: cache (0,1) / route[0]=(next=0)
   B->>S: DATA+JQ(prev=2)  — duplicate, dropped
   B->>C: DATA+JQ(prev=2)
 
-  Note over R1: cache; route[0]=(next=1)<br/>member of demo → deliver payload (inbox)<br/>originate JR after jr_delay
+  Note over R1: cache / route[0]=(next=1)<br/>member of demo → deliver payload (inbox)<br/>originate JR after jr_delay
   R1->>A: DATA+JQ(prev=3) — duplicate
   R1->>R2: DATA+JQ(prev=3)
   R1-->>A: JOIN_REPLY{group=demo, [(sender=0, next_hop=1)]}
@@ -47,11 +47,11 @@ sequenceDiagram
   A-->>R1: JOIN_REPLY (ignored at 3: next_hop≠3)
   Note over S: entry sender==self → mesh established (observational)
 
-  Note over C: cache; route[0]=(next=2); not member
+  Note over C: cache / route[0]=(next=2) / not member
   C->>B: DATA+JQ(prev=4) — duplicate
   C->>R2: DATA+JQ(prev=4) — duplicate at 5 (already cached via 3)
 
-  Note over R2: first JQ arrived via 3 → route[0]=(next=3)<br/>member → deliver payload; originate JR
+  Note over R2: first JQ arrived via 3 → route[0]=(next=3)<br/>member → deliver payload / originate JR
   R2->>R1: DATA+JQ(prev=5) — duplicate
   R2->>C: DATA+JQ(prev=5) — duplicate
   R2-->>R1: JOIN_REPLY{[(0, next_hop=3)]}
@@ -89,7 +89,7 @@ sequenceDiagram
   Note over I: forwarded[(group, frozenset(senders), source_seq)] = True
   I-->>U: JOIN_REPLY{[(S1, next_hop=U)]}
   Note over I: later JR arrives with senders ⊆ already forwarded, same source seq
-  I->>I: refresh FG_FLAG only; no broadcast
+  I->>I: refresh FG_FLAG only / no broadcast
   Note over I: JR arrives adding sender S2
   I-->>U: JOIN_REPLY{[(S2, next_hop=U')]}  — only the new entry
 ```
@@ -102,7 +102,7 @@ Implementation detail for `odmrp-vlo`: key the suppression set by the *source's*
 sequenceDiagram
   participant S as Node 0
   participant Net as Network
-  Note over S: t = 4.0: route_refresh fires<br/>data queued? → piggyback; else standalone JQ (empty payload)<br/>seq = 2
+  Note over S: t = 4.0: route_refresh fires<br/>data queued? → piggyback / else standalone JQ (empty payload)<br/>seq = 2
   S->>Net: JQ(seq=2) flood (same rules as 1.1)
   Net-->>S: Join Replies return along reverse paths
   Note over Net: every FG node refreshed: expires_at = now + FG_TIMEOUT<br/>nodes that stopped being on a reverse path are NOT refreshed and expire 9 s after their last refresh

@@ -13,10 +13,10 @@ sequenceDiagram
   participant P as child process (odmrp-node-rs)
   SES->>H: create node 4 with impl = external("./odmrp-node-rs")
   H->>X: configure(node_id=4, params, rng_seed)
-  X->>P: spawn; stdin/stdout pipes
+  X->>P: spawn / stdin/stdout pipes
   X->>P: {"op":"configure","id":1,"node_id":4,"params":{...},"rng_seed":1234}
   P-->>X: {"id":1,"ok":true}
-  Note over X,P: one request in flight at a time; every request gets exactly one reply
+  Note over X,P: one request in flight at a time / every request gets exactly one reply
   SES->>H: ... simulation runs ...
   SES->>H: shutdown
   H->>X: close()

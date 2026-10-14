@@ -22,7 +22,7 @@ sequenceDiagram
   loop every ≤ 50 ms while events pending
     BUS-->>WS: events (tx, rx, state.*, deliver, ...)
     WS-->>B: {type:"events", events:[...]}
-    B->>ST: append to ring; update node state from state.* deltas
+    B->>ST: append to ring / update node state from state.* deltas
     WS-->>B: {type:"node", id, state}   (only when a node's state changed)
     B->>ST: merge
   end
@@ -81,7 +81,7 @@ sequenceDiagram
   CTL->>RT: start(speed)
   loop every 20 ms wall-clock
     RT->>ENG: run_until(t + 0.020 × speed)
-    Note over ENG: identical code path to step; wall-clock only decides how far to advance
+    Note over ENG: identical code path to step / wall-clock only decides how far to advance
   end
   B->>API: PUT /api/sim/speed {multiplier: 4}
   API->>RT: speed = 4
@@ -105,7 +105,7 @@ sequenceDiagram
   NV->>API: on drop {x, y}
   API->>TOPO: move(4, pos, now)
   TOPO->>TOPO: recompute neighbours of 4 only
-  TOPO->>BUS: topology op=move; link_down(2,4); link_up(4,5) ...
+  TOPO->>BUS: topology op=move / link_down(2,4) / link_up(4,5) ...
   BUS-->>WS: events
   WS-->>ST: authoritative position + link deltas (overrides optimistic)
 ```
@@ -122,11 +122,11 @@ sequenceDiagram
   B->>API: load basic-mesh
   API->>SCN: load("scenarios/basic-mesh.yaml")
   SCN->>SES: reset(seed, params)
-  SES->>ENG: new engine; add nodes; schedule script ops at their `at` times
+  SES->>ENG: new engine / add nodes / schedule script ops at their `at` times
   ENG-->>SES: sim op=load {seed, scenario}
   SES-->>API: ok
   API-->>B: 200
-  Note over B: WebSocket delivers a fresh snapshot; mode = paused at t = 0
+  Note over B: WebSocket delivers a fresh snapshot / mode = paused at t = 0
 ```
 
 Scripted operations (`join`, `text`, `file`, `move`, `leave`) are ordinary scheduler events, so a scenario run is reproducible headlessly with `python -m odmrp_sim.cli run scenarios/basic-mesh.yaml --until 20 --trace out.jsonl`.

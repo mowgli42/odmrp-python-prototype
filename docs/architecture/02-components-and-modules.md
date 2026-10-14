@@ -24,7 +24,7 @@ flowchart TB
   end
   subgraph sim["odmrp_sim.sim"]
     ENG[SimulationEngine]
-    SCH[Scheduler<br/>heap (t, seq, node)]
+    SCH["Scheduler<br/>heap (t, seq, node)"]
     RNG[SeededRng<br/>per-node substreams]
     TOPO[Topology<br/>positions, ranges, neighbour sets]
     MED[Medium<br/>broadcast, delay, jitter, LossModel]

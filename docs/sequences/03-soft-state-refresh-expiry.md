@@ -95,7 +95,7 @@ sequenceDiagram
   C-->>B: JR
   Note over B: FG(demo) set
   B-->>S: JR [(0, next_hop=0)]
-  Note over C: MemberActive; FG set is now {1, 3, 2}
+  Note over C: MemberActive / FG set is now {1, 3, 2}
 ```
 
 Expected join latency is uniform in `[0, ROUTE_REFRESH_INTERVAL)`; the inspector shows the countdown to the source's next refresh so the delay is explainable.

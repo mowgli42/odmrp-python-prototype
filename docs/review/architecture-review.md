@@ -139,7 +139,7 @@ flowchart LR
   ENG --> TOPO[Topology]
   ENG --> MED[Medium]
   ENG --> HOST[NodeHost × N]
-  HOST --> NODE[ODMRPNode<br/>Python ref | external]
+  HOST --> NODE["ODMRPNode<br/>Python ref | external"]
   HOST --> BUS[EventBus]
   MED --> BUS
   BUS --> WS

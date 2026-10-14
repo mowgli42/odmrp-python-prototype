@@ -53,11 +53,11 @@ sequenceDiagram
   alt (source, seq) in message cache
     X->>X: drop reason=duplicate
   else
-    X->>X: cache; route[source] = prev_hop
+    X->>X: cache / route[source] = prev_hop
     opt member of group
-      X->>X: deliver payload; schedule Join Reply (jr_delay)
+      X->>X: deliver payload / schedule Join Reply (jr_delay)
     end
-    X->>X: hop_count += 1; ttl -= 1
+    X->>X: hop_count += 1 / ttl -= 1
     alt ttl > 0
       X->>N: DATA+JQ(prev_hop = X)
     else

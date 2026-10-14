@@ -19,7 +19,7 @@ sequenceDiagram
 
   U->>API: {source: 0, group: "demo", text: "ODMRP works"}
   API->>MS: send_text(0, "demo", text)
-  MS->>MS: message_id = uuid; payload = AppPayload(kind=text, message_id, body)
+  MS->>MS: message_id = uuid / payload = AppPayload(kind=text, message_id, body)
   MS->>H0: originate("demo", payload.encode(), now)
   H0->>N0: originate(...)
   N0-->>H0: [DATA(+JQ if no session)]
@@ -53,7 +53,7 @@ sequenceDiagram
 
   U->>API: source=0, group=demo, file=demo.txt (10 240 B)
   API->>MS: send_file(0, "demo", "demo.txt", bytes)
-  MS->>MS: transfer_id = uuid; total = ceil(10240/1024) = 10; sha256 = digest(bytes)
+  MS->>MS: transfer_id = uuid / total = ceil(10240/1024) = 10 / sha256 = digest(bytes)
   loop index = 0 .. 9
     MS->>H0: originate("demo", AppPayload(kind=chunk, transfer_id, index, total, name, sha256, data[index]))
     H0->>Net: DATA seq=s+index
@@ -61,7 +61,7 @@ sequenceDiagram
   API-->>U: 202 {transfer_id, total: 10}
 
   Net->>H5: deliver(DATA chunk 0)
-  H5->>TA: create (total=10, sha256) ; add(0)
+  H5->>TA: create (total=10, sha256) / add(0)
   H5->>MS: transfer op=start
   Net->>H5: deliver(chunk 1 .. 9)  (any order, duplicates ignored)
   H5->>TA: add(index)
