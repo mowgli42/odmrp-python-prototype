@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="560" viewBox="0 0 1280 560" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" xml:space="preserve">
+  <defs>
+    <style>
+      .panel { fill:#ffffff; stroke:#d0d5dd; }
+      .bg { fill:#f5f6f8; }
+      .t { fill:#101828; }
+      .m { fill:#667085; }
+      .h { fill:#101828; font-weight:600; }
+      .btn { fill:#ffffff; stroke:#98a2b3; rx:6; }
+      .chip { fill:#eef2f6; stroke:#d0d5dd; rx:10; }
+      .lbl { fill:#101828; font-weight:600; text-anchor:middle; }
+      .row { fill:#101828; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
+      .lane { stroke:#e4e7ec; }
+      .grid { stroke:#eef2f6; }
+      .refresh { stroke:#7c3aed; stroke-dasharray:4 4; opacity:0.6; }
+      .fgband { fill:#f59e0b; opacity:0.25; }
+      .jq { fill:#7c3aed; }
+      .jr { fill:#0d9488; }
+      .data { fill:#ea580c; }
+      .dlv { fill:#15803d; }
+      .drop { fill:#dc2626; font-weight:700; text-anchor:middle; font-size:14px; }
+      .cursor { stroke:#1d4ed8; stroke-width:2; }
+    </style>
+    <symbol id="jq" viewBox="-6 -6 12 12"><polygon class="jq" points="0,-6 6,0 0,6 -6,0"/></symbol>
+    <symbol id="jr" viewBox="-6 -6 12 12"><polygon class="jr" points="-6,5 6,5 0,-6"/></symbol>
+    <symbol id="data" viewBox="-6 -6 12 12"><circle class="data" r="5"/></symbol>
+    <symbol id="dlv" viewBox="-7 -7 14 14"><polygon class="dlv" points="0,-7 2,-2 7,-2 3,1 4,6 0,3 -4,6 -3,1 -7,-2 -2,-2"/></symbol>
+  </defs>
+  <rect class="bg" width="1280" height="560"/>
+  <rect class="panel" x="12" y="12" width="1256" height="536"/>
+
+  <!-- header / filters -->
+  <text class="h" x="28" y="40" font-size="16">Trace timeline</text>
+  <rect class="chip" x="170" y="24" width="60" height="22" fill="#ede9fe"/>
+  <text class="t" x="180" y="39" font-size="11">◆ JQ</text>
+  <rect class="chip" x="236" y="24" width="60" height="22" fill="#ccfbf1"/>
+  <text class="t" x="246" y="39" font-size="11">▲ JR</text>
+  <rect class="chip" x="302" y="24" width="72" height="22" fill="#ffedd5"/>
+  <text class="t" x="312" y="39" font-size="11">● DATA</text>
+  <rect class="chip" x="380" y="24" width="84" height="22" fill="#dcfce7"/>
+  <text class="t" x="390" y="39" font-size="11">★ deliver</text>
+  <rect class="chip" x="470" y="24" width="76" height="22" fill="#fef3c7"/>
+  <text class="t" x="480" y="39" font-size="11">▬ FG state</text>
+  <rect class="chip" x="552" y="24" width="64" height="22"/>
+  <text class="t" x="562" y="39" font-size="11">× drops</text>
+  <rect class="chip" x="622" y="24" width="70" height="22" opacity="0.5"/>
+  <text class="t" x="632" y="39" font-size="11">timers</text>
+  <text class="m" x="720" y="39" font-size="11">group: demo ▾ · nodes: all ▾ · window: 0–8 s ▾ · follow sim ✓</text>
+  <rect class="btn" x="1080" y="22" width="84" height="26"/>
+  <text class="lbl" x="1122" y="39" font-size="11">⇩ JSONL</text>
+  <rect class="btn" x="1172" y="22" width="84" height="26"/>
+  <text class="lbl" x="1214" y="39" font-size="11">Diff run…</text>
+
+  <!-- time axis -->
+  <line x1="120" y1="72" x2="1180" y2="72" stroke="#98a2b3"/>
+  <g class="m" font-size="11">
+    <text x="120" y="66" text-anchor="middle">0 s</text>
+    <text x="250" y="66" text-anchor="middle">1</text>
+    <text x="380" y="66" text-anchor="middle">2</text>
+    <text x="510" y="66" text-anchor="middle">3</text>
+    <text x="640" y="66" text-anchor="middle">4</text>
+    <text x="770" y="66" text-anchor="middle">5</text>
+    <text x="900" y="66" text-anchor="middle">6</text>
+    <text x="1030" y="66" text-anchor="middle">7</text>
+    <text x="1160" y="66" text-anchor="middle">8</text>
+  </g>
+  <g class="grid">
+    <line x1="250" y1="72" x2="250" y2="430"/><line x1="380" y1="72" x2="380" y2="430"/><line x1="510" y1="72" x2="510" y2="430"/>
+    <line x1="640" y1="72" x2="640" y2="430"/><line x1="770" y1="72" x2="770" y2="430"/><line x1="900" y1="72" x2="900" y2="430"/>
+    <line x1="1030" y1="72" x2="1030" y2="430"/><line x1="1160" y1="72" x2="1160" y2="430"/>
+  </g>
+  <!-- refresh markers: t = 1, 4, 7 -->
+  <line class="refresh" x1="250" y1="72" x2="250" y2="430"/>
+  <line class="refresh" x1="640" y1="72" x2="640" y2="430"/>
+  <line class="refresh" x1="1030" y1="72" x2="1030" y2="430"/>
+  <text class="m" x="254" y="84" font-size="10" fill="#7c3aed">JQ seq 1</text>
+  <text class="m" x="644" y="84" font-size="10" fill="#7c3aed">JQ seq 2</text>
+  <text class="m" x="1034" y="84" font-size="10" fill="#7c3aed">JQ seq 3</text>
+
+  <!-- lanes: node i at y = 110 + i*55 -->
+  <g class="row">
+    <text x="28" y="114">node 0  src</text>
+    <text x="28" y="169">node 1  FG</text>
+    <text x="28" y="224">node 2</text>
+    <text x="28" y="279">node 3  FG·mbr</text>
+    <text x="28" y="334">node 4</text>
+    <text x="28" y="389">node 5  mbr</text>
+  </g>
+  <g class="lane">
+    <line x1="120" y1="110" x2="1180" y2="110"/><line x1="120" y1="165" x2="1180" y2="165"/><line x1="120" y1="220" x2="1180" y2="220"/>
+    <line x1="120" y1="275" x2="1180" y2="275"/><line x1="120" y1="330" x2="1180" y2="330"/><line x1="120" y1="385" x2="1180" y2="385"/>
+  </g>
+
+  <!-- FG bands (set at ~1.06 / 1.10, refreshed at 4.0x; shown to window end) -->
+  <rect class="fgband" x="258" y="151" width="922" height="28"/>
+  <rect class="fgband" x="263" y="261" width="917" height="28"/>
+  <text class="m" x="700" y="148" font-size="10">FG(demo) · expires 13.06 s unless refreshed</text>
+
+  <!-- cycle 1 (tH1.0): JQ flood -->
+  <use href="#jq" x="244" y="104" width="12" height="12"/>
+  <use href="#jq" x="248" y="159" width="12" height="12"/>
+  <use href="#jq" x="248" y="214" width="12" height="12"/>
+  <use href="#jq" x="252" y="269" width="12" height="12"/>
+  <use href="#jq" x="252" y="324" width="12" height="12"/>
+  <use href="#jq" x="256" y="379" width="12" height="12"/>
+  <!-- deliveries of piggybacked payload -->
+  <use href="#dlv" x="262" y="262" width="14" height="14"/>
+  <use href="#dlv" x="266" y="372" width="14" height="14"/>
+  <!-- JRs -->
+  <use href="#jr" x="268" y="269" width="12" height="12"/>
+  <use href="#jr" x="272" y="159" width="12" height="12"/>
+  <use href="#jr" x="276" y="379" width="12" height="12"/>
+  <!-- drops (dups) -->
+  <text class="drop" x="262" y="118">×</text>
+  <text class="drop" x="266" y="338">×</text>
+  <text class="drop" x="270" y="398">×</text>
+
+  <!-- cycle 2 (tH4.0): JQ refresh + JRs, then DATA 0:2 at 4.23 -->
+  <use href="#jq" x="634" y="104" width="12" height="12"/>
+  <use href="#jq" x="638" y="159" width="12" height="12"/>
+  <use href="#jq" x="638" y="214" width="12" height="12"/>
+  <use href="#jq" x="642" y="269" width="12" height="12"/>
+  <use href="#jq" x="642" y="324" width="12" height="12"/>
+  <use href="#jq" x="646" y="379" width="12" height="12"/>
+  <use href="#jr" x="658" y="269" width="12" height="12"/>
+  <use href="#jr" x="662" y="159" width="12" height="12"/>
+  <use href="#jr" x="666" y="379" width="12" height="12"/>
+  <use href="#data" x="668" y="104" width="12" height="12"/>
+  <use href="#data" x="672" y="159" width="12" height="12"/>
+  <text class="drop" x="676" y="228">×</text>
+  <text class="m" x="684" y="229" font-size="10">not_fg</text>
+  <use href="#data" x="676" y="269" width="12" height="12"/>
+  <use href="#dlv" x="690" y="262" width="14" height="14"/>
+  <use href="#dlv" x="694" y="372" width="14" height="14"/>
+
+  <!-- cycle 3 (tH7.0): standalone JQ, no data queued -->
+  <use href="#jq" x="1024" y="104" width="12" height="12"/>
+  <use href="#jq" x="1028" y="159" width="12" height="12"/>
+  <use href="#jq" x="1028" y="214" width="12" height="12"/>
+  <use href="#jq" x="1032" y="269" width="12" height="12"/>
+  <use href="#jq" x="1032" y="324" width="12" height="12"/>
+  <use href="#jq" x="1036" y="379" width="12" height="12"/>
+  <use href="#jr" x="1048" y="269" width="12" height="12"/>
+  <use href="#jr" x="1052" y="159" width="12" height="12"/>
+  <use href="#jr" x="1056" y="379" width="12" height="12"/>
+  <text class="m" x="1044" y="118" font-size="10">standalone JQ (idle &lt; 3 s)</text>
+
+  <!-- cursor at t = 4.25 -->
+  <line class="cursor" x1="672" y1="72" x2="672" y2="430"/>
+  <rect x="646" y="430" width="56" height="18" rx="4" fill="#1d4ed8"/>
+  <text x="674" y="443" fill="#fff" text-anchor="middle" font-size="11">4.250 s</text>
+
+  <!-- selected event detail -->
+  <line x1="12" y1="462" x2="1268" y2="462" stroke="#e4e7ec"/>
+  <text class="h" x="28" y="486">Selected event</text>
+  <text class="row" x="160" y="486">t=4.238  node=2  kind=drop  packet=0:2  reason=not_fg  from=0</text>
+  <text class="m" x="28" y="508" font-size="11">Why: node 2 holds route[0]=(next 0) but no Join Reply named it as next hop this cycle (receiver 5 chose 3), so FG(demo) is unset at node 2. Hover a marker to see the full JSON event; click to select the node in the graph.</text>
+  <text class="m" x="28" y="532" font-size="11">Diff run…: load a second trace (e.g. node 4 = Rust implementation) and overlay divergences in red — first divergence jumps the cursor.</text>
+</svg>

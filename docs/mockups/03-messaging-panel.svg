@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="720" viewBox="0 0 920 720" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" xml:space="preserve">
+  <defs>
+    <style>
+      .panel { fill:#ffffff; stroke:#d0d5dd; }
+      .bg { fill:#f5f6f8; }
+      .t { fill:#101828; }
+      .m { fill:#667085; }
+      .h { fill:#101828; font-weight:600; }
+      .btn { fill:#ffffff; stroke:#98a2b3; rx:6; }
+      .btn-primary { fill:#1d4ed8; stroke:#1d4ed8; rx:6; }
+      .chip { fill:#eef2f6; stroke:#d0d5dd; rx:10; }
+      .lbl { fill:#101828; font-weight:600; text-anchor:middle; }
+      .lblw { fill:#ffffff; font-weight:600; text-anchor:middle; }
+      .row { fill:#101828; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
+      .hdr { fill:#667085; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; }
+      .bar { fill:#e4e7ec; rx:3; }
+      .ok { fill:#15803d; rx:3; }
+      .warn { fill:#f59e0b; rx:3; }
+      .sep { stroke:#e4e7ec; }
+      .tab { fill:#667085; }
+      .tab-on { fill:#1d4ed8; font-weight:600; }
+    </style>
+  </defs>
+  <rect class="bg" width="920" height="720"/>
+  <rect class="panel" x="16" y="16" width="888" height="688"/>
+  <text class="h" x="32" y="46" font-size="18">Messaging</text>
+  <text class="tab-on" x="32" y="84">Compose</text>
+  <line x1="32" y1="90" x2="92" y2="90" stroke="#1d4ed8" stroke-width="2"/>
+  <text class="tab" x="112" y="84">Outbox (3)</text>
+  <text class="tab" x="192" y="84">Inboxes</text>
+  <line class="sep" x1="16" y1="98" x2="904" y2="98"/>
+
+  <!-- compose -->
+  <text class="m" x="32" y="126">From (source)</text>
+  <rect class="btn" x="32" y="134" width="120" height="28"/>
+  <text class="t" x="42" y="153">node 0 ▾</text>
+  <text class="m" x="170" y="126">To group</text>
+  <rect class="btn" x="170" y="134" width="140" height="28"/>
+  <text class="t" x="180" y="153">demo ▾</text>
+  <text class="m" x="326" y="153" font-size="11">members now: 3, 5 · FG: {1, 3} · session established (seq 2)</text>
+
+  <rect class="btn" x="32" y="176" width="560" height="60"/>
+  <text class="t" x="42" y="198">ODMRP works</text>
+  <text class="m" x="42" y="228" font-size="11">11 bytes → 1 data packet</text>
+  <rect class="btn-primary" x="604" y="176" width="100" height="28"/>
+  <text class="lblw" x="654" y="195">Send text</text>
+  <text class="m" x="604" y="226" font-size="11">⏎ to send · packet carries JQ header if session idle</text>
+
+  <rect x="32" y="252" width="560" height="68" rx="8" fill="#f8fafc" stroke="#98a2b3" stroke-dasharray="6 4"/>
+  <text class="lbl" x="312" y="282">Drop a file here or click to choose (≤ 1 MiB)</text>
+  <text class="m" x="312" y="304" text-anchor="middle" font-size="11">split into 1 KiB chunks · transfer_id · sha256 verified at receivers · best-effort (no repair)</text>
+  <rect class="btn-primary" x="604" y="252" width="100" height="28" opacity="0.5"/>
+  <text class="lblw" x="654" y="271">Send file</text>
+
+  <!-- outbox -->
+  <text class="h" x="32" y="356">Outbox</text>
+  <text class="hdr" x="32" y="376">sent at   kind   id        group   size       receivers        status</text>
+  <rect x="28" y="384" width="864" height="20" rx="4" fill="#eff6ff"/>
+  <text class="row" x="32" y="398">1.000 s   text   m-7f3a    demo    11 B       2 / 2 ✓          delivered</text>
+  <text class="row" x="32" y="418">4.226 s   text   m-9c01    demo    6 B        2 / 2 ✓          delivered</text>
+  <text class="row" x="32" y="438">6.100 s   file   t-21be    files   10 240 B   1 / 1 · 7/10     in progress</text>
+  <rect class="bar" x="520" y="430" width="90" height="8"/>
+  <rect class="warn" x="520" y="430" width="63" height="8"/>
+
+  <!-- delivery report -->
+  <line class="sep" x1="16" y1="456" x2="904" y2="456"/>
+  <text class="h" x="32" y="482">Delivery report · m-7f3a “ODMRP works”</text>
+  <rect class="btn" x="640" y="466" width="140" height="24"/>
+  <text class="lbl" x="710" y="483" font-size="11">Highlight paths on graph ✓</text>
+  <rect class="btn" x="790" y="466" width="98" height="24"/>
+  <text class="lbl" x="839" y="483" font-size="11">Export JSON</text>
+  <text class="m" x="32" y="504" font-size="11">sent 1.000 s · FG at send: none (first JQ of session) · members at send: 3, 5 · packet 0:1 · piggybacked Join Query</text>
+  <text class="hdr" x="32" y="526">receiver   arrived    hops   path              latency   copies seen</text>
+  <rect x="28" y="534" width="864" height="20" rx="4" fill="#f0fdf4"/>
+  <text class="row" x="32" y="548">3 ✓        1.210 s    2      0 → 1 → 3         0.210 s   1 (+1 dup)</text>
+  <rect x="28" y="554" width="864" height="20" rx="4" fill="#f0fdf4"/>
+  <text class="row" x="32" y="568">5 ✓        1.420 s    3      0 → 1 → 3 → 5     0.420 s   1 (+1 dup via 4)</text>
+  <text class="row" x="32" y="592" fill="#667085">missed: none · non-member nodes that saw the packet: 1, 2, 4 (flood)</text>
+
+  <!-- transfer detail -->
+  <text class="h" x="32" y="630">Transfer · t-21be demo.txt → files</text>
+  <text class="hdr" x="32" y="650">receiver   received   missing          verified   download</text>
+  <text class="row" x="32" y="670">3          7 / 10     [7, 8, 9]        —          —</text>
+  <rect class="bar" x="330" y="662" width="120" height="8"/>
+  <rect class="warn" x="330" y="662" width="84" height="8"/>
+  <text class="m" x="32" y="694" font-size="11">chunks 7–9 are still in flight (sim paused at 6.4 s). A stalled transfer keeps the missing list visible; repair is a roadmap bead.</text>
+</svg>

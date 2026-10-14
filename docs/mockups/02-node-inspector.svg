@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="720" viewBox="0 0 920 720" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" xml:space="preserve">
+  <defs>
+    <style>
+      .panel { fill:#ffffff; stroke:#d0d5dd; }
+      .bg { fill:#f5f6f8; }
+      .t { fill:#101828; }
+      .m { fill:#667085; }
+      .h { fill:#101828; font-weight:600; }
+      .btn { fill:#ffffff; stroke:#98a2b3; rx:6; }
+      .chip { fill:#eef2f6; stroke:#d0d5dd; rx:10; }
+      .lbl { fill:#101828; font-weight:600; text-anchor:middle; }
+      .row { fill:#101828; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
+      .hdr { fill:#667085; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; }
+      .bar { fill:#e4e7ec; rx:3; }
+      .barfill { fill:#f59e0b; rx:3; }
+      .tab { fill:#667085; }
+      .tab-on { fill:#1d4ed8; font-weight:600; }
+      .sep { stroke:#e4e7ec; }
+    </style>
+  </defs>
+  <rect class="bg" width="920" height="720"/>
+  <rect class="panel" x="16" y="16" width="888" height="688"/>
+
+  <!-- header -->
+  <text class="h" x="32" y="46" font-size="18">Node 3</text>
+  <rect class="chip" x="110" y="30" width="64" height="22" fill="#dcfce7" stroke="#15803d"/>
+  <text class="t" x="120" y="45" font-size="11">member</text>
+  <rect class="chip" x="180" y="30" width="44" height="22" fill="#fef3c7" stroke="#f59e0b"/>
+  <text class="t" x="190" y="45" font-size="11">FG</text>
+  <rect class="chip" x="230" y="30" width="118" height="22"/>
+  <text class="t" x="240" y="45" font-size="11">impl: python-ref</text>
+  <rect class="btn" x="700" y="28" width="92" height="26"/>
+  <text class="lbl" x="746" y="45">Make source</text>
+  <rect class="btn" x="800" y="28" width="88" height="26" stroke="#dc2626"/>
+  <text class="lbl" x="844" y="45" fill="#dc2626">Remove</text>
+
+  <!-- tabs -->
+  <text class="tab" x="32" y="84">Overview</text>
+  <text class="tab-on" x="110" y="84">Tables</text>
+  <line x1="110" y1="90" x2="156" y2="90" stroke="#1d4ed8" stroke-width="2"/>
+  <text class="tab" x="176" y="84">Inbox (1)</text>
+  <text class="tab" x="250" y="84">Trace (23)</text>
+  <line class="sep" x1="16" y1="98" x2="904" y2="98"/>
+
+  <!-- position / move -->
+  <text class="h" x="32" y="126">Position</text>
+  <text class="m" x="32" y="148">x</text>
+  <rect class="btn" x="46" y="132" width="70" height="24"/>
+  <text class="row" x="54" y="149">300</text>
+  <text class="m" x="128" y="148">y</text>
+  <rect class="btn" x="142" y="132" width="70" height="24"/>
+  <text class="row" x="150" y="149">120</text>
+  <text class="m" x="224" y="148">range</text>
+  <rect class="btn" x="266" y="132" width="70" height="24"/>
+  <text class="row" x="274" y="149">130</text>
+  <rect class="btn" x="348" y="132" width="64" height="24"/>
+  <text class="lbl" x="380" y="149">Apply</text>
+  <text class="m" x="430" y="148" font-size="11">neighbours: 1, 5</text>
+
+  <!-- groups -->
+  <text class="h" x="32" y="190">Group membership</text>
+  <text class="hdr" x="32" y="210">group     state     since    last JR sent   next refresh (src)</text>
+  <text class="row" x="32" y="230">demo      active    0.00 s   4.01 s         +1.75 s</text>
+  <rect class="btn" x="520" y="214" width="60" height="22"/>
+  <text class="lbl" x="550" y="229" font-size="11">Leave</text>
+  <text class="row" x="32" y="250" fill="#92400e">files     pending   4.10 s   —              +1.75 s  ⓘ next JQ</text>
+  <rect class="btn" x="520" y="234" width="60" height="22"/>
+  <text class="lbl" x="550" y="249" font-size="11">Leave</text>
+  <rect class="btn" x="32" y="262" width="100" height="22"/>
+  <text class="lbl" x="82" y="277" font-size="11">+ Join group…</text>
+
+  <!-- forwarding group table -->
+  <text class="h" x="32" y="316">Forwarding group table</text>
+  <text class="m" x="200" y="316" font-size="11">(keyed by group — ADR-003; fg_scope = group)</text>
+  <text class="hdr" x="32" y="336">group     expires in                 last refresh   refreshed by</text>
+  <text class="row" x="32" y="356">demo</text>
+  <rect class="bar" x="110" y="348" width="160" height="8"/>
+  <rect class="barfill" x="110" y="348" width="110" height="8"/>
+  <text class="row" x="280" y="356">6.2 / 9.0 s</text>
+  <text class="row" x="372" y="356">4.06 s         {5}</text>
+
+  <!-- routing table -->
+  <text class="h" x="32" y="396">Routing table</text>
+  <text class="hdr" x="32" y="416">source    next hop   seq    expires in     learned via</text>
+  <text class="row" x="32" y="436">0         1          2      7.1 s          JQ 0:2 @ 4.01 s</text>
+
+  <!-- message cache -->
+  <text class="h" x="32" y="476">Message cache</text>
+  <text class="m" x="170" y="476" font-size="11">LRU · 3 / 1024</text>
+  <text class="hdr" x="32" y="496">(source, seq)   kind    first seen   dups suppressed</text>
+  <text class="row" x="32" y="516">(0, 2)          DATA+JQ 4.01 s       1</text>
+  <text class="row" x="32" y="532">(0, 1)          DATA+JQ 1.01 s       2</text>
+  <text class="row" x="32" y="548">(5, 1)          JR      1.19 s       0</text>
+
+  <!-- join reply suppression -->
+  <text class="h" x="32" y="588">Join Reply bookkeeping</text>
+  <text class="hdr" x="32" y="608">group   senders   src seq   sent at   role</text>
+  <text class="row" x="32" y="628">demo    {0}       2         4.03 s    receiver → next hop 1</text>
+  <text class="row" x="32" y="644">demo    {0}       2         —         FG (suppressed: same table)</text>
+
+  <!-- right column: timers -->
+  <line class="sep" x1="600" y1="110" x2="600" y2="690"/>
+  <text class="h" x="616" y="126">Timers (sim clock)</text>
+  <text class="hdr" x="616" y="146">key              due       in</text>
+  <text class="row" x="616" y="166">fg_expire:demo   13.06 s   6.2 s</text>
+  <text class="row" x="616" y="182">route_expire:0   13.01 s   7.1 s</text>
+  <text class="row" x="616" y="198">jr_delay:files   —         —</text>
+
+  <text class="h" x="616" y="240">Protocol params (network)</text>
+  <text class="row" x="616" y="260">route_refresh_interval  3.0 s</text>
+  <text class="row" x="616" y="276">fg_timeout              9.0 s</text>
+  <text class="row" x="616" y="292">route_timeout           9.0 s</text>
+  <text class="row" x="616" y="308">source_idle_timeout     3.0 s</text>
+  <text class="row" x="616" y="324">join_query_ttl          32</text>
+  <text class="row" x="616" y="340">jq_jitter / jr_delay    0 / 0 ms</text>
+  <text class="row" x="616" y="356">fg_scope                group</text>
+  <rect class="btn" x="616" y="368" width="72" height="22"/>
+  <text class="lbl" x="652" y="383" font-size="11">Edit…</text>
+  <text class="m" x="696" y="383" font-size="11">resets session, same seed</text>
+
+  <text class="h" x="616" y="424">Counters</text>
+  <text class="row" x="616" y="444">tx  JQ 2   JR 2   DATA 2</text>
+  <text class="row" x="616" y="460">rx  JQ 4   JR 1   DATA 2</text>
+  <text class="row" x="616" y="476">drops  dup 3   not_fg 0   ttl 0</text>
+  <text class="row" x="616" y="492">delivered  1 msg · 0 files</text>
+
+  <text class="h" x="616" y="534">Node state (raw)</text>
+  <rect x="616" y="544" width="272" height="132" rx="6" fill="#0f172a"/>
+  <text x="626" y="562" fill="#e2e8f0" font-family="ui-monospace, Menlo, monospace" font-size="11">{"id":3,"members":["demo"],</text>
+  <text x="626" y="578" fill="#e2e8f0" font-family="ui-monospace, Menlo, monospace" font-size="11"> "routes":{"0":{"next_hop":1,"seq":2,</text>
+  <text x="626" y="594" fill="#e2e8f0" font-family="ui-monospace, Menlo, monospace" font-size="11">   "expires_at":13.01}},</text>
+  <text x="626" y="610" fill="#e2e8f0" font-family="ui-monospace, Menlo, monospace" font-size="11"> "forwarding_groups":{"demo":{</text>
+  <text x="626" y="626" fill="#e2e8f0" font-family="ui-monospace, Menlo, monospace" font-size="11">   "expires_at":13.06,"refreshed_by":[5]}}</text>
+  <text x="626" y="642" fill="#e2e8f0" font-family="ui-monospace, Menlo, monospace" font-size="11"> "message_cache_size":3, ...}</text>
+  <text class="m" x="616" y="692" font-size="11">GET /api/nodes/3 · copy as JSON</text>
+</svg>

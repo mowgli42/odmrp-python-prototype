@@ -1,0 +1,483 @@
+{
+  "commit_message": "ODMRP prototype: implementation plan from architecture review",
+  "nodes": [
+    {
+      "key": "e0", "type": "epic", "priority": 1, "labels": ["phase-0", "area:spec"],
+      "title": "Phase 0 - Architecture decisions and spec reconciliation",
+      "description": "Resolve the open design questions raised in docs/review/architecture-review.md before code is written. Each child is a `decision` bead (ADR-style): record the chosen option in the bead, then patch design.md / specs so the Gherkin and the code agree.\n\nWhy first: several findings (Join Query piggybacking, FG table scope, Join Reply table semantics, the ODMRPNode seam) change the packet model and node interface that every later phase builds on.",
+      "acceptance_criteria": "- Every child decision bead is closed with the chosen option recorded in its notes.\n- design.md, specs/odmrp/spec.md and specs/test-harness/spec.md updated to match (interface names reconciled, identifiers canonical).\n- docs/review/adherence-matrix.md rows marked DECIDED where applicable."
+    },
+    {
+      "key": "d-ids", "parent_key": "e0", "type": "decision", "priority": 1, "labels": ["phase-0", "area:spec"],
+      "title": "ADR-001: Canonical identifiers (NodeId, GroupId, sequence number space)",
+      "description": "Specs are inconsistent: specs/odmrp uses IP multicast addresses (224.1.1.1), specs/messaging uses names (\"chat\"), design.md uses `group: str`. Node ids are sometimes letters (S, R1) and sometimes ints (node 0..5).\n\nRecommended: `NodeId = int` (0..N-1, display label optional); `GroupId = str` label that maps 1:1 to a synthetic 224.x.y.z address only at the wire/RFC5444 boundary; one per-source `uint32` sequence number space shared by Join Query and data packets (the draft treats the Join Query as a data packet, so a shared counter is natural) compared with RFC 1982 serial-number arithmetic.",
+      "acceptance_criteria": "- Decision recorded; design.md Data Structures section updated.\n- specs/odmrp/spec.md scenario 'Sequence numbers are monotonically increasing' amended with wrap-around rule.",
+      "design": "See docs/review/architecture-review.md finding F-04 and F-11; docs/architecture/03-data-model-and-interfaces.md."
+    },
+    {
+      "key": "d-jq-piggyback", "parent_key": "e0", "type": "decision", "priority": 1, "labels": ["phase-0", "area:protocol"],
+      "title": "ADR-002: Join Query as piggybacked data-packet header vs. standalone control packet",
+      "description": "draft-ietf-manet-odmrp-04 section 3.1 defines the Join Query as 'a member advertising packet with data payload piggybacked'; the ns-2/GloMoSim reference implementations carry a `piggyback` flag in the JQ header. The repo spec models Join Query as a separate control packet.\n\nRecommended: hybrid (as ns-2): `DataPacket` may carry an optional `JoinQueryHeader`; when the refresh timer fires and data is queued, the next data packet carries the JQ; when no data is queued at refresh time but the session is still active, a standalone JQ (empty payload) is sent. Trace records both as kind=JOIN_QUERY with `piggybacked: bool` so traces remain comparable to GloMoSim/ns-2 behaviour.",
+      "acceptance_criteria": "- Decision recorded.\n- specs/odmrp/spec.md 'Source initiates Join Query' scenarios amended to state piggyback behaviour.\n- Packet model in docs/architecture/03 matches.",
+      "design": "docs/review/architecture-review.md F-01; docs/sequences/01-mesh-formation.md."
+    },
+    {
+      "key": "d-fg-scope", "parent_key": "e0", "type": "decision", "priority": 1, "labels": ["phase-0", "area:protocol"],
+      "title": "ADR-003: Forwarding Group table scope - per group (draft) vs per (source, group) (repo spec)",
+      "description": "The draft (section 3.6.2) keys the Forwarding Group table by multicast group: an FG node forwards data from *any* source of that group. The repo spec keys FG_FLAG by (source, group). With multiple sources per group these produce different meshes and different traces.\n\nRecommended: key by group (draft-conformant) and keep per-source refresh bookkeeping for observability; expose `fg_scope: group | source_group` as a protocol parameter so experiments can compare. Default = group.",
+      "acceptance_criteria": "- Decision recorded; specs/odmrp/spec.md FG requirement reworded.\n- Adherence matrix row 'FG table scope' updated.",
+      "design": "docs/review/architecture-review.md F-03."
+    },
+    {
+      "key": "d-jr-table", "parent_key": "e0", "type": "decision", "priority": 1, "labels": ["phase-0", "area:protocol"],
+      "title": "ADR-004: Join Reply as a table of (Sender, NextHop) entries with Count/R/F flags",
+      "description": "The draft's Join Reply (section 4.2) is a *table*: Count, R (ack-request) and F (sent by FG node) flags, group, previous hop, and n entries of (Sender IP, Next Hop IP[, RET]). An intermediate node builds its own Join Reply only from the matched entries and broadcasts it once per refresh if the arrival carries no new source information. The repo spec describes a single next-hop field.\n\nRecommended: adopt the table form now (it is required for correct multi-source behaviour and matches every existing implementation); leave RFC 5444 link-local aggregation of multiple Join Replies as a roadmap bead.",
+      "acceptance_criteria": "- Decision recorded; JoinReply dataclass defined as in docs/architecture/03.\n- specs/odmrp/spec.md 'Receiver originates Join Reply' and 'Intermediate node joins Forwarding Group' scenarios updated.",
+      "design": "docs/review/architecture-review.md F-02."
+    },
+    {
+      "key": "d-interface", "parent_key": "e0", "type": "decision", "priority": 1, "labels": ["phase-0", "area:harness"],
+      "title": "ADR-005: ODMRPNode interface (time-driven, pure outputs) for Python and external nodes",
+      "description": "design.md defines `receive(packet, previous_hop) -> list[Packet]`, `originate_data(...) -> None`, `get_state()`; specs/test-harness names `process_packet`, `originate_join_query`. Neither exposes time or timers, which an external C++/Rust node needs.\n\nRecommended interface (all methods return a list of `TxIntent`/`Packet` so the simulator owns transmission and tracing):\n- `configure(params: ProtocolParams) -> None`\n- `set_membership(group, member: bool, now) -> list[Packet]`\n- `originate(group, payload, now) -> list[Packet]`\n- `receive(packet, previous_hop, now) -> list[Packet]`\n- `advance(now) -> list[Packet]`  (fires timers up to `now`)\n- `next_timer() -> float | None`  (lets the scheduler skip idle time)\n- `get_state() -> NodeState`",
+      "acceptance_criteria": "- Decision recorded; design.md and specs/test-harness/spec.md use the same names.\n- Interface documented in docs/architecture/03-data-model-and-interfaces.md and docs/sequences/06-external-node-adapter.md.",
+      "design": "docs/review/architecture-review.md F-10."
+    },
+    {
+      "key": "d-trace", "parent_key": "e0", "type": "decision", "priority": 1, "labels": ["phase-0", "area:harness"],
+      "title": "ADR-006: Trace / event schema v1 (JSON lines) shared by WebSocket, tests and external validation",
+      "description": "One event schema is consumed by three clients: the WebSocket feed, pytest-bdd assertions, and multi-implementation diffing. Define it once.\n\nRecommended event kinds: `tx`, `rx`, `drop`, `state.route`, `state.fg`, `state.member`, `timer`, `deliver`, `topology`, `sim`. Every event carries `t` (sim time), `seq` (global monotonic), `node`, `kind`, and a kind-specific payload. Canonical ordering key for determinism diffs: (t, seq).",
+      "acceptance_criteria": "- Decision recorded; schema table in docs/architecture/03 is normative.\n- JSON Schema file produced when p6-trace is implemented.",
+      "design": "docs/review/architecture-review.md F-09; docs/architecture/03-data-model-and-interfaces.md section 'Trace events'."
+    },
+    {
+      "key": "d-frontend", "parent_key": "e0", "type": "decision", "priority": 2, "labels": ["phase-0", "area:frontend"],
+      "title": "ADR-007: Frontend rendering approach (plain SVG in Svelte vs vis-network)",
+      "description": "design.md suggests vis-network. Its physics layout would fight the simulator-owned positions, and packet animation along specific links is awkward. Recommended: Svelte 5 + plain SVG (nodes, links, FG halo, packet dots animated with requestAnimationFrame) with a Canvas fallback above ~300 nodes. Keep the graph component dumb: positions and all state come from the WebSocket store.",
+      "acceptance_criteria": "- Decision recorded in design.md Frontend section.\n- Mockups in docs/mockups/ remain valid for the chosen approach.",
+      "design": "docs/review/architecture-review.md F-13; docs/mockups/README.md."
+    },
+
+    {
+      "key": "e1", "type": "epic", "priority": 1, "labels": ["phase-1", "area:sim"],
+      "title": "Phase 1 - Simulation core (topology, clock, delivery)",
+      "description": "Single-process discrete-event MANET simulator: nodes with 2D positions and radio range, distance-based neighbours, a deterministic scheduler, broadcast delivery to current neighbours, per-node timers. No protocol logic yet. Spec: specs/simulation/spec.md.",
+      "acceptance_criteria": "- All scenarios in specs/simulation/spec.md pass as pytest unit tests (without the frontend).\n- `python -m odmrp_sim.cli run scenarios/basic-mesh.yaml --until 10` runs deterministically (identical trace hash on two runs)."
+    },
+    {
+      "key": "p1-models", "parent_key": "e1", "type": "task", "priority": 1, "labels": ["phase-1", "area:sim"],
+      "title": "Define Packet, Node, Topology and protocol header dataclasses",
+      "description": "Create `odmrp_sim/model/` with frozen dataclasses: `Position`, `NodeSpec`, `Topology`, `Packet` (envelope: id, kind, src, prev_hop, ttl, hop_count, group, seq, payload), `JoinQueryHeader`, `JoinReply` (table form per ADR-004), `DataPacket`, `ProtocolParams`, `NodeState`. Fields follow draft-ietf-manet-odmrp-04 section 4 so a future RFC 5444 codec is a pure mapping.",
+      "acceptance_criteria": "- Dataclasses importable; mypy --strict clean.\n- Round-trip `to_dict()/from_dict()` for every packet type (needed by WS, trace and external adapter).",
+      "design": "docs/architecture/03-data-model-and-interfaces.md (class diagram)."
+    },
+    {
+      "key": "p1-neighbors", "parent_key": "e1", "type": "task", "priority": 1, "labels": ["phase-1", "area:sim"],
+      "title": "Distance-based neighbour computation (unit-disk, symmetric)",
+      "description": "`Topology.neighbors(node_id)` returns nodes with Euclidean distance <= range (per-node range: link exists iff within range of the *transmitter*; keep symmetric by default and expose `symmetric_links: bool` for the later unidirectional roadmap item). Recompute incrementally on `move_node`; emit `topology` trace events only for link add/remove deltas.",
+      "acceptance_criteria": "- Gherkin: 'Two nodes are neighbors when within range' and 'Nodes outside range are not neighbors' pass.\n- O(n) update for a single move; full recompute O(n^2) only on bulk load.",
+      "design": "docs/architecture/02-components-and-modules.md (Topology component)."
+    },
+    {
+      "key": "p1-clock", "parent_key": "e1", "type": "task", "priority": 1, "labels": ["phase-1", "area:sim"],
+      "title": "Discrete-event scheduler with deterministic ordering and seeded RNG",
+      "description": "Binary-heap scheduler keyed by `(time, seq, node_id)` so equal-time events are ordered stably. Two drivers: `step(dt)` / `run_until(t)` for tests, and a real-time driver that maps sim time to wall-clock with a speed multiplier. One `random.Random(seed)` instance owned by the engine; nodes receive a sub-generator derived from (seed, node_id).",
+      "acceptance_criteria": "- Gherkin: 'Step time causes timer expiration' passes.\n- Two runs with the same seed produce byte-identical traces (test added here, reused by p6-determinism).",
+      "design": "docs/architecture/04-state-machines.md (SimulationEngine run states); docs/sequences/05-ui-api-simulation.md."
+    },
+    {
+      "key": "p1-delivery", "parent_key": "e1", "type": "task", "priority": 1, "labels": ["phase-1", "area:sim"],
+      "title": "Broadcast packet delivery to current neighbours with per-hop delay and jitter",
+      "description": "`Medium.broadcast(sender, packet, now)` schedules one `rx` event per current neighbour at `now + hop_delay + jitter(seed)`. Add a `LossModel` hook (default: no loss) so the roadmap loss bead is a drop-in. Record `tx`/`rx`/`drop` trace events.",
+      "acceptance_criteria": "- Gherkin: 'Broadcast reaches only neighbors' passes.\n- Neighbour set is evaluated at transmit time, not at receive time (documented behaviour).",
+      "design": "docs/sequences/02-data-forwarding.md."
+    },
+    {
+      "key": "p1-timers", "parent_key": "e1", "type": "task", "priority": 1, "labels": ["phase-1", "area:sim"],
+      "title": "Per-node timer service driven by the simulation clock",
+      "description": "Timers are the only way protocol state changes without a packet. Implement `TimerService.schedule(node, key, at, payload)` / `cancel(node, key)` on top of the scheduler, delivered to the node via `advance(now)` (ADR-005). Keys: `route_refresh`, `fg_expire:<group>`, `route_expire:<source>`, `jr_delay:<group>`.",
+      "acceptance_criteria": "- Cancelling and re-arming a timer with the same key never fires the stale instance.\n- Unit test: FG flag set to expire in 5 s has expired after `step(5.1)`."
+    },
+    {
+      "key": "p1-rest-min", "parent_key": "e1", "type": "task", "priority": 2, "labels": ["phase-1", "area:api"],
+      "title": "Minimal REST: create network, get state, step time",
+      "description": "Thin FastAPI app exposing `POST /api/network`, `GET /api/state`, `POST /api/sim/step`. Purpose: an end-to-end smoke path before the protocol exists. Full API lands in Phase 4.",
+      "acceptance_criteria": "- `httpx` test creates a 6-node network, steps 1 s, reads state.",
+      "design": "docs/architecture/03-data-model-and-interfaces.md (REST table)."
+    },
+
+    {
+      "key": "e6a", "type": "epic", "priority": 1, "labels": ["phase-6", "area:harness"],
+      "title": "Phase 6a - Test-harness seams (node interface + trace), pulled forward",
+      "description": "tasks.md puts the ODMRPNode protocol and the JSON-lines trace in Phase 6. The review recommends landing both *before* the protocol implementation so the Python reference is written against the seam from day one and every Phase 2 unit test can assert on trace events. Spec: specs/test-harness/spec.md.",
+      "acceptance_criteria": "- A `FakeNode` implementing ODMRPNode can be plugged into the simulator and receives packets (Gherkin 'External node can be plugged in')."
+    },
+    {
+      "key": "p6-protocol", "parent_key": "e6a", "type": "task", "priority": 1, "labels": ["phase-6", "area:harness"],
+      "title": "Implement the ODMRPNode Protocol, NodeHost wrapper and FakeNode",
+      "description": "`odmrp_sim/protocol/interface.py` defines `ODMRPNode` (typing.Protocol) per ADR-005. `NodeHost` adapts the simulator to any ODMRPNode: it owns the node's timers, forwards `receive/advance/originate`, and turns returned packets into `Medium.broadcast` calls plus trace events. `FakeNode` echoes scripted packets for tests.",
+      "acceptance_criteria": "- Gherkin: 'External node can be plugged in' passes with FakeNode on node 4.\n- NodeHost is the only place that calls Medium; nodes never touch the scheduler.",
+      "design": "docs/architecture/02-components-and-modules.md; docs/sequences/06-external-node-adapter.md."
+    },
+    {
+      "key": "p6-trace", "parent_key": "e6a", "type": "task", "priority": 1, "labels": ["phase-6", "area:harness"],
+      "title": "Event bus and JSON-lines trace writer (schema v1)",
+      "description": "In-process `EventBus.publish(event)` with subscribers: `JsonlTraceWriter` (file), `RingBuffer` (recent events for REST/WS), and later the WebSocket broadcaster. Events per ADR-006. Provide `trace_hash(path)` helper for determinism tests.",
+      "acceptance_criteria": "- JSON Schema `schemas/trace-event.v1.json` validates every emitted event in tests.\n- Gherkin: 'Trace contains Join Query and resulting FG set' is runnable once Phase 2 lands (test skeleton added now).",
+      "design": "docs/architecture/03-data-model-and-interfaces.md (Trace events)."
+    },
+
+    {
+      "key": "e2", "type": "epic", "priority": 1, "labels": ["phase-2", "area:protocol"],
+      "title": "Phase 2 - ODMRP reference implementation (Python)",
+      "description": "Per-node ODMRP state machine per draft-ietf-manet-odmrp-04 sections 3.6, 5.1, 5.2 behind the ODMRPNode seam. Spec: specs/odmrp/spec.md. Reference behaviour cross-checked against docs/review/adherence-matrix.md.",
+      "acceptance_criteria": "- Every scenario in specs/odmrp/spec.md passes as a pytest unit test using the stepped clock.\n- basic-mesh scenario produces the expected FG set documented in docs/sequences/01-mesh-formation.md."
+    },
+    {
+      "key": "p2-tables", "parent_key": "e2", "type": "task", "priority": 1, "labels": ["phase-2", "area:protocol"],
+      "title": "Node tables: routing table, forwarding-group table, message cache, member set",
+      "description": "Per draft section 3.6: `RoutingTable[source] -> (next_hop, seq, expires_at)`, `ForwardingGroupTable[group] -> (expires_at, refreshed_by: set[source])` (ADR-003), `MessageCache` LRU of (source, seq) with capacity param, `members: set[group]`, per-source `seq` counter. All pure Python, no scheduler access.",
+      "acceptance_criteria": "- Unit tests for insert/refresh/expire semantics and LRU eviction.\n- `NodeState` snapshot is JSON-serialisable and matches docs/architecture/03.",
+      "design": "docs/architecture/03-data-model-and-interfaces.md; docs/architecture/04-state-machines.md."
+    },
+    {
+      "key": "p2-seq", "parent_key": "e2", "type": "task", "priority": 1, "labels": ["phase-2", "area:protocol"],
+      "title": "Sequence number management with wrap-around comparison",
+      "description": "Per ADR-001: per-source uint32 counter; `is_newer(a, b)` uses RFC 1982 serial arithmetic. Used by message cache freshness and routing-table refresh.",
+      "acceptance_criteria": "- Gherkin: 'Newer sequence number refreshes state' passes, including a wrap-around case (0xFFFFFFFF -> 0)."
+    },
+    {
+      "key": "p2-jq-originate", "parent_key": "e2", "type": "task", "priority": 1, "labels": ["phase-2", "area:protocol"],
+      "title": "Source: originate Join Query on demand and refresh every ROUTE_REFRESH_INTERVAL while data is pending",
+      "description": "Draft 5.1.1. `originate()` with no active session starts a session: emit JQ (piggybacked on the first data packet per ADR-002), arm `route_refresh`. On refresh: increment seq, emit JQ (piggybacked if data queued). Session ends (no more JQ) when the source has had no data for `SOURCE_IDLE_TIMEOUT` (new param, default = ROUTE_REFRESH_INTERVAL) - soft state, draft 3.3.",
+      "acceptance_criteria": "- Gherkin: 'Source with data originates first Join Query' and 'Source periodically refreshes Join Query while data remains' pass.\n- Gherkin: 'Timers are respected' (ROUTE_REFRESH_INTERVAL = 2.0) passes.",
+      "design": "docs/sequences/01-mesh-formation.md; docs/sequences/03-soft-state-refresh-expiry.md; docs/architecture/04-state-machines.md (SourceSession)."
+    },
+    {
+      "key": "p2-jq-process", "parent_key": "e2", "type": "task", "priority": 1, "labels": ["phase-2", "area:protocol"],
+      "title": "Process Join Query: duplicate check, backward learning, member reply, hop/TTL, rebroadcast",
+      "description": "Implement draft 5.1.2 verbatim: (1) drop if (source, seq) in message cache; (2) cache + insert/refresh routing entry source->previous_hop; (3) if member of group, originate Join Reply (p2-jr-originate); (4) hop_count+1, ttl-1; (5) drop if ttl<=0; (6) set previous_hop=self and rebroadcast after seeded jitter `JQ_JITTER`. If the JQ was piggybacked on data, deliver the payload locally when member and forward per data rules.",
+      "acceptance_criteria": "- Gherkin: 'Intermediate node learns reverse path and rebroadcasts' and 'Duplicate Join Query is suppressed' pass.\n- TTL default `JOIN_QUERY_TTL=32` honoured; packet with ttl 1 is consumed but not rebroadcast.",
+      "design": "docs/sequences/01-mesh-formation.md."
+    },
+    {
+      "key": "p2-jr-originate", "parent_key": "e2", "type": "task", "priority": 1, "labels": ["phase-2", "area:protocol"],
+      "title": "Receiver: originate Join Reply table toward all known sources of the group",
+      "description": "Draft 5.1.5 + ADR-004. On a fresh JQ for a group the node is a member of, (re)build the Join Reply table for that group: one entry per source in the routing table whose entry is unexpired: (sender=source, next_hop=routing[source].next_hop). Broadcast after `JR_DELAY` (short seeded delay, lets several JQs arrive first and mirrors the implementations). Set F flag if the node is also FG.",
+      "acceptance_criteria": "- Gherkin: 'Receiver originates Join Reply' passes with next_hop = previous hop of the JQ.\n- Two sources for one group yield a single Join Reply with two entries."
+    },
+    {
+      "key": "p2-jr-process", "parent_key": "e2", "type": "task", "priority": 1, "labels": ["phase-2", "area:protocol"],
+      "title": "Process Join Reply: match next-hop, set FG_FLAG, build and forward own Join Reply once per refresh",
+      "description": "Draft 5.1.6: (1) select entries whose next_hop == self; none -> ignore; (2) set FG_FLAG(group) with expiry now+FG_TIMEOUT (refresh if present), record which sources refreshed it; (3) build own Join Reply from matched entries using routing table next hops; (4) broadcast. Suppression: if a Join Reply with the same (group, source set) was already forwarded for the current source seq, do not re-broadcast (draft 3.1 'I2 broadcasts only once'). The source consumes entries addressed to itself and emits a `state.route` event marking the mesh established.",
+      "acceptance_criteria": "- Gherkin: 'Intermediate node joins Forwarding Group' passes.\n- In basic-mesh, intermediate node 2 forwards exactly one Join Reply per refresh although it receives two.",
+      "design": "docs/sequences/01-mesh-formation.md."
+    },
+    {
+      "key": "p2-softstate", "parent_key": "e2", "type": "task", "priority": 1, "labels": ["phase-2", "area:protocol"],
+      "title": "Soft-state expiry: FG_TIMEOUT, ROUTE_TIMEOUT, member-less leave",
+      "description": "Arm/refresh `fg_expire:<group>` and `route_expire:<source>` timers; on expiry clear the entry and emit `state.fg` / `state.route` events. No explicit leave messages anywhere (draft 3.3): receivers leave by not replying, sources leave by not refreshing.",
+      "acceptance_criteria": "- Gherkin: 'Forwarding Group soft-state expires' passes.\n- After the source stops originating, all FG flags in the network are cleared within FG_TIMEOUT + one refresh interval.",
+      "design": "docs/sequences/03-soft-state-refresh-expiry.md; docs/architecture/04-state-machines.md (ForwardingGroupEntry)."
+    },
+    {
+      "key": "p2-data-forward", "parent_key": "e2", "type": "task", "priority": 1, "labels": ["phase-2", "area:protocol"],
+      "title": "Data forwarding: forward iff FG member and non-duplicate; local delivery to group members",
+      "description": "Draft 5.2. On data `rx`: duplicate -> drop (trace `drop reason=duplicate`); if member of group -> `deliver` event (payload to application layer); if FG_FLAG(group) unexpired -> rebroadcast with prev_hop=self; else drop (`reason=not_fg`). Source transmits its own data regardless of FG status. Receivers that are not FG do not forward.",
+      "acceptance_criteria": "- Gherkin: 'FG node forwards data' and 'Non-FG node does not forward data' pass.\n- Messaging Gherkin 'Message delivered to group members' passes end-to-end using the stepped clock.",
+      "design": "docs/sequences/02-data-forwarding.md."
+    },
+    {
+      "key": "p2-config", "parent_key": "e2", "type": "task", "priority": 2, "labels": ["phase-2", "area:protocol"],
+      "title": "ProtocolParams: configurable timers, TTL, jitter, cache size, fg_scope",
+      "description": "`ProtocolParams(route_refresh_interval=3.0, fg_timeout=9.0, route_timeout=9.0, source_idle_timeout=3.0, join_query_ttl=32, jq_jitter=0.010, jr_delay=0.025, message_cache_size=1024, fg_scope='group')`. Defaults follow the UCLA simulation settings (3 s refresh, FG lifetime 3x refresh) cited in the E-ODMRP paper and the draft's '3-5x' guidance. Validate fg_timeout >= 2*route_refresh_interval with a warning.",
+      "acceptance_criteria": "- Params settable per network via REST and via scenario YAML.\n- Gherkin: 'Timers are respected' passes with a non-default value."
+    },
+    {
+      "key": "p2-unit-tests", "parent_key": "e2", "type": "task", "priority": 1, "labels": ["phase-2", "area:protocol", "testing"],
+      "title": "pytest suite mapping every specs/odmrp/spec.md scenario to a stepped-clock test",
+      "description": "One test per Gherkin scenario, named after it, using the 6-node basic-mesh fixture and trace assertions (not internal state peeking where avoidable). This is the regression gate for all later refactors and the oracle for external implementations.",
+      "acceptance_criteria": "- 100% of odmrp spec scenarios have a passing test.\n- Test ids include the spec scenario title for traceability."
+    },
+
+    {
+      "key": "e3", "type": "epic", "priority": 2, "labels": ["phase-3", "area:messaging"],
+      "title": "Phase 3 - Messaging and file transfer",
+      "description": "Application layer on top of ODMRP data packets: text messages, chunked file transfers with reassembly, delivery reports. Spec: specs/messaging/spec.md. Best-effort only (no retransmission) - matches the lossless simulator; repair is a roadmap bead.",
+      "acceptance_criteria": "- All scenarios in specs/messaging/spec.md pass against the service layer (no HTTP)."
+    },
+    {
+      "key": "p3-message-api", "parent_key": "e3", "type": "task", "priority": 2, "labels": ["phase-3", "area:messaging"],
+      "title": "MessagingService: inject a text message at a source for a group",
+      "description": "`MessagingService.send_text(node, group, text) -> message_id`. Encodes an `AppPayload(kind='text', message_id, body)`; calls `NodeHost.originate`. Receivers' `deliver` events are turned into `Inbox` entries per node.",
+      "acceptance_criteria": "- Gherkin: 'Message delivered to group members' passes (R1 and R2 inboxes contain 'hello team')."
+    },
+    {
+      "key": "p3-chunking", "parent_key": "e3", "type": "task", "priority": 2, "labels": ["phase-3", "area:messaging"],
+      "title": "File chunking (transfer_id, index, total, sha256) and receiver reassembly",
+      "description": "`send_file(node, group, name, bytes)` splits into `CHUNK_SIZE=1024` chunks `AppPayload(kind='chunk', transfer_id, index, total, name, sha256)`. Receiver keeps a `TransferAssembler` per transfer_id; on completion verify sha256 and expose the file via `FileStore`. Size limit 1 MiB.",
+      "acceptance_criteria": "- Gherkin: 'Small file is delivered intact' passes (10 KB file byte-identical, hash verified).\n- Partial transfers report `missing: [indices]`.",
+      "design": "docs/sequences/04-messaging-file-transfer.md; docs/architecture/04-state-machines.md (TransferAssembler)."
+    },
+    {
+      "key": "p3-delivery-report", "parent_key": "e3", "type": "task", "priority": 2, "labels": ["phase-3", "area:messaging"],
+      "title": "Delivery report: receivers reached and path(s) taken, derived from the trace",
+      "description": "`DeliveryReport(message_id)` built from `deliver` events joined with `tx/rx` events by packet id: list of receivers with arrival time and the hop path (reverse from the receiver's rx chain). Exposed later via REST and the UI messaging panel.",
+      "acceptance_criteria": "- Gherkin: 'Delivery report lists receivers' passes.\n- Report for basic-mesh message shows path 0 -> 2 -> 3 and 0 -> 2 -> 5 (or equivalent per FG set)."
+    },
+
+    {
+      "key": "e4", "type": "epic", "priority": 2, "labels": ["phase-4", "area:api"],
+      "title": "Phase 4 - FastAPI REST + WebSocket",
+      "description": "HTTP control plane and real-time push. REST mutates/queries; WebSocket streams a snapshot on connect then deltas (topology, node state, trace events) using the ADR-006 schema. Pause/resume/step/speed controls.",
+      "acceptance_criteria": "- OpenAPI document generated and committed under docs/api/openapi.json.\n- WebSocket client receives snapshot + events for the basic-mesh scenario."
+    },
+    {
+      "key": "p4-app", "parent_key": "e4", "type": "task", "priority": 2, "labels": ["phase-4", "area:api"],
+      "title": "FastAPI application skeleton: settings, lifespan, single Simulation session, CORS",
+      "description": "`odmrp_sim/api/app.py` with a `SimulationSession` held in app state (one network per process for the prototype), pydantic-settings for defaults, background task running the real-time driver when mode=run.",
+      "acceptance_criteria": "- `uvicorn odmrp_sim.api.app:app` starts; `GET /api/health` returns version and sim time."
+    },
+    {
+      "key": "p4-rest", "parent_key": "e4", "type": "task", "priority": 2, "labels": ["phase-4", "area:api"],
+      "title": "REST endpoints: network, nodes, groups, messages, files, scenarios, params",
+      "description": "Endpoints per docs/architecture/03 table: network create/load scenario; node add/remove/move; join/leave group; send text; upload file (multipart); download reassembled file; delivery report; node state; params get/set; trace tail.",
+      "acceptance_criteria": "- Gherkin: 'Visualization can query node state' passes via `GET /api/nodes/3`.\n- Gherkin: 'User joins a group from the UI' server side passes via `POST /api/nodes/{id}/groups`."
+    },
+    {
+      "key": "p4-ws", "parent_key": "e4", "type": "task", "priority": 2, "labels": ["phase-4", "area:api"],
+      "title": "WebSocket /ws: snapshot on connect, then batched deltas and trace events",
+      "description": "Subscribe a `WebSocketBroadcaster` to the EventBus. On connect send `{type:'snapshot', topology, nodes, params, sim}`; afterwards coalesce events into frames at most every 50 ms (`{type:'events', events:[...]}`) and send `{type:'node', ...}` state deltas. Backpressure: drop `tx/rx` events for slow clients, never drop `state.*`.",
+      "acceptance_criteria": "- Gherkin: 'Graph reflects current topology' data contract satisfied by the snapshot.\n- Load test: 50 nodes, 10 pkt/s, client stays within 1 frame of sim time.",
+      "design": "docs/sequences/05-ui-api-simulation.md."
+    },
+    {
+      "key": "p4-controls", "parent_key": "e4", "type": "task", "priority": 2, "labels": ["phase-4", "area:api"],
+      "title": "Simulation controls: run / pause / step(dt) / speed / reset",
+      "description": "`POST /api/sim/{run|pause|step|reset}` and `PUT /api/sim/speed`. Step is only valid while paused. State machine in docs/architecture/04 (SimulationEngine).",
+      "acceptance_criteria": "- Step while running returns 409.\n- Reset reloads the current scenario with the same seed and emits a new snapshot."
+    },
+    {
+      "key": "p4-api-tests", "parent_key": "e4", "type": "task", "priority": 2, "labels": ["phase-4", "area:api", "testing"],
+      "title": "API tests with httpx + websockets covering the happy-path demo",
+      "description": "Automated version of DEMO.md: load basic-mesh, join groups on nodes 3 and 5, send 'ODMRP works' from node 0, step until delivered, assert FG set and inboxes via REST and WS.",
+      "acceptance_criteria": "- Test passes in CI in < 5 s."
+    },
+
+    {
+      "key": "e5", "type": "epic", "priority": 2, "labels": ["phase-5", "area:frontend"],
+      "title": "Phase 5 - Svelte frontend",
+      "description": "Interactive visualisation per specs/visualization/spec.md and the wireframes in docs/mockups/. Svelte 5 + TypeScript + Vite; plain SVG rendering (ADR-007).",
+      "acceptance_criteria": "- All four mockup screens implemented: network view, node inspector, messaging panel, trace timeline.\n- All scenarios in specs/visualization/spec.md demonstrable manually and covered by Playwright smoke tests."
+    },
+    {
+      "key": "p5-scaffold", "parent_key": "e5", "type": "task", "priority": 2, "labels": ["phase-5", "area:frontend"],
+      "title": "Frontend scaffold: Vite + Svelte 5 + TS, typed WS store, REST client",
+      "description": "`frontend/` with `src/lib/stores/sim.svelte.ts` (runes-based store fed by the WebSocket: topology, nodes, events ring buffer, sim status), `src/lib/api.ts` generated from OpenAPI, proxy config for dev.",
+      "acceptance_criteria": "- `npm run dev` connects and logs the snapshot."
+    },
+    {
+      "key": "p5-graph", "parent_key": "e5", "type": "task", "priority": 2, "labels": ["phase-5", "area:frontend"],
+      "title": "NetworkView: render nodes at simulated positions and links between neighbours",
+      "description": "SVG viewport with pan/zoom; nodes as circles with id labels; links as lines; drag to move (optimistic update, then `PUT /api/nodes/{id}/position`). Range circle shown for the selected node.",
+      "acceptance_criteria": "- Gherkin: 'Graph reflects current topology' passes (Playwright counts 5 nodes and only in-range edges).",
+      "design": "docs/mockups/01-network-view.svg; docs/mockups/README.md."
+    },
+    {
+      "key": "p5-highlight", "parent_key": "e5", "type": "task", "priority": 2, "labels": ["phase-5", "area:frontend"],
+      "title": "Highlight source, group members and forwarding-group nodes for the selected session",
+      "description": "Session selector (source, group). Visual encoding per mockup legend: source = filled square, member = ring, FG = halo (opacity fades with remaining FG lifetime), mesh links (between FG/source/member nodes) drawn thicker.",
+      "acceptance_criteria": "- Gherkin: 'FG nodes are highlighted after mesh forms' passes."
+    },
+    {
+      "key": "p5-animation", "parent_key": "e5", "type": "task", "priority": 2, "labels": ["phase-5", "area:frontend"],
+      "title": "Packet animation and event log",
+      "description": "Animate `tx`->`rx` pairs as dots travelling along the link (colour by kind: JQ, JR, DATA); drops shown as a brief X. Event log panel with filter chips (kind, node, group) backed by the ring buffer.",
+      "acceptance_criteria": "- Gherkin: 'Packet animation appears' passes.\n- 60 fps with 20 concurrent packets on a 30-node topology.",
+      "design": "docs/mockups/04-trace-timeline.svg."
+    },
+    {
+      "key": "p5-controls", "parent_key": "e5", "type": "task", "priority": 2, "labels": ["phase-5", "area:frontend"],
+      "title": "Toolbar, node inspector and group controls",
+      "description": "Toolbar: run/pause/step/speed, sim clock, scenario picker, params drawer. Node inspector: position, groups (join/leave), routing table, FG table with countdowns, message cache size, inbox. Add/remove node buttons.",
+      "acceptance_criteria": "- Gherkin: 'User joins a group from the UI' passes end-to-end.",
+      "design": "docs/mockups/02-node-inspector.svg."
+    },
+    {
+      "key": "p5-files", "parent_key": "e5", "type": "task", "priority": 2, "labels": ["phase-5", "area:frontend"],
+      "title": "Messaging panel: send text, upload file, delivery report with paths",
+      "description": "Compose box bound to the selected source and group; file drop zone (<= 1 MiB); transfer progress per receiver (chunks received/total); delivery report table with per-receiver path, clicking a row highlights the path in the graph; download link for reassembled files.",
+      "acceptance_criteria": "- Messaging Gherkin scenarios demonstrable from the UI.",
+      "design": "docs/mockups/03-messaging-panel.svg."
+    },
+
+    {
+      "key": "e6b", "type": "epic", "priority": 2, "labels": ["phase-6", "area:harness"],
+      "title": "Phase 6b - Executable Gherkin and determinism harness",
+      "description": "Turn the spec scenarios into executable acceptance tests against the running API, and lock in deterministic replay. Spec: specs/test-harness/spec.md.",
+      "acceptance_criteria": "- `pytest -m bdd` runs every specs/**/spec.md scenario tagged executable."
+    },
+    {
+      "key": "p6-bdd", "parent_key": "e6b", "type": "task", "priority": 2, "labels": ["phase-6", "area:harness", "testing"],
+      "title": "pytest-bdd step library and feature files extracted from specs/*/spec.md",
+      "description": "Generate `features/*.feature` from the Gherkin blocks in the specs (script `tools/extract_features.py`, run in CI to detect drift). Step definitions drive the API with httpx and read the trace.",
+      "acceptance_criteria": "- Drift check fails CI when a spec scenario changes without the feature file being regenerated."
+    },
+    {
+      "key": "p6-determinism", "parent_key": "e6b", "type": "task", "priority": 2, "labels": ["phase-6", "area:harness", "testing"],
+      "title": "Deterministic replay test: identical traces and FG sets across runs",
+      "description": "Run basic-mesh twice with the same seed and injection script; compare trace hashes and the final FG set. Also run with two different seeds and assert FG sets are equal when jitter is disabled (sanity check that only jitter is randomised).",
+      "acceptance_criteria": "- Gherkin: 'Two runs produce identical FG membership' passes."
+    },
+    {
+      "key": "p6-external-doc", "parent_key": "e6b", "type": "task", "priority": 2, "labels": ["phase-6", "area:harness", "docs"],
+      "title": "Document the external node contract (IPC messages, lifecycle, conformance checklist)",
+      "description": "`docs/external-node-contract.md`: NDJSON-over-stdio protocol mirroring ODMRPNode (`configure`, `set_membership`, `originate`, `receive`, `advance`, `get_state`), framing, error handling, and the conformance checklist derived from specs/odmrp/spec.md. This is the handoff document for the C++/Rust implementers.",
+      "acceptance_criteria": "- A reviewer can implement FakeNode in another language from the document alone.",
+      "design": "docs/sequences/06-external-node-adapter.md."
+    },
+
+    {
+      "key": "e7", "type": "epic", "priority": 3, "labels": ["phase-7", "docs"],
+      "title": "Phase 7 - Demo closure",
+      "description": "Make the happy-path demo reproducible: exact commands, scenario fixture, screenshots, and the roadmap kept in beads.",
+      "acceptance_criteria": "- A new contributor can follow DEMO.md from clone to delivered message in one sitting."
+    },
+    {
+      "key": "p7-demo", "parent_key": "e7", "type": "task", "priority": 3, "labels": ["phase-7", "docs"],
+      "title": "DEMO.md commands, scenarios/basic-mesh.yaml fixture, screenshots",
+      "description": "Commit `scenarios/basic-mesh.yaml` (6 nodes, range, seed, expected FG set), finalise DEMO.md run commands, add screenshots that match docs/mockups/, and link docs/implementation-plan.md.",
+      "acceptance_criteria": "- `bd list --status open --label phase-1..phase-6` is empty or every remaining item is explicitly deferred."
+    },
+
+    {
+      "key": "e8", "type": "epic", "priority": 4, "labels": ["roadmap"],
+      "title": "Roadmap - production / multi-language validation (from beads.md)",
+      "description": "Items intentionally outside the prototype. Imported from beads.md so they carry dependencies on the prototype work that enables them. Not scheduled.",
+      "acceptance_criteria": "n/a - container epic."
+    },
+    { "key": "r11", "parent_key": "e8", "type": "feature", "priority": 3, "labels": ["roadmap", "area:protocol"],
+      "title": "Join Reply reliability: passive acknowledgement, R flag, retransmission, route invalidation",
+      "description": "Draft section 3.2. Not needed in a lossless simulator but a prerequisite for any loss model or real networking. Adds `ACK_TIMEOUT`, `MAX_RETRANSMISSIONS`, active ACK from the source, and the 'next hop unreachable' broadcast fallback.",
+      "acceptance_criteria": "- Under 20% random loss the delivery ratio of basic-mesh stays > 95%." },
+    { "key": "r1", "parent_key": "e8", "type": "feature", "priority": 3, "labels": ["roadmap", "area:harness"],
+      "title": "External node adapter (process-based, NDJSON or protobuf IPC) for C++/Rust nodes",
+      "description": "beads.md item 1. Implements the contract from p6-external-doc as `ExternalProcessNode(ODMRPNode)`." },
+    { "key": "r2", "parent_key": "e8", "type": "feature", "priority": 3, "labels": ["roadmap", "area:harness"],
+      "title": "Deterministic multi-implementation comparison (trace diff in CI)",
+      "description": "beads.md item 2. Same scenario, Python vs external node sets; diff `state.fg` and `deliver` events; fail CI on divergence." },
+    { "key": "r3", "parent_key": "e8", "type": "feature", "priority": 4, "labels": ["roadmap", "area:sim"],
+      "title": "Real networking mode (UDP sockets / TUN-TAP overlay) incl. RFC 5444 codec",
+      "description": "beads.md item 3 plus the 'full RFC 5444 encoding' deferral from README. The UB Java implementation (message types 127/128, address blocks with type extensions) is a usable starting point for the TLV layout." },
+    { "key": "r4", "parent_key": "e8", "type": "feature", "priority": 4, "labels": ["roadmap", "area:sim"],
+      "title": "Mobility models (random waypoint, Gauss-Markov, scripted) with movement visualisation",
+      "description": "beads.md item 4. Mobility updates positions through the same `move_node` path so topology deltas and traces stay consistent." },
+    { "key": "r5", "parent_key": "e8", "type": "feature", "priority": 4, "labels": ["roadmap", "area:sim"],
+      "title": "Packet loss and collision model (probabilistic loss, hidden terminal, 802.11-like MAC)",
+      "description": "beads.md item 5. Plugs into the `LossModel` hook from p1-delivery." },
+    { "key": "r6", "parent_key": "e8", "type": "feature", "priority": 4, "labels": ["roadmap", "area:protocol"],
+      "title": "Unidirectional link detection and blacklist (ODMRP-ASYM style)",
+      "description": "beads.md item 6. Requires asymmetric links in the topology (`symmetric_links=False`) and the ACK machinery from r11." },
+    { "key": "r7", "parent_key": "e8", "type": "feature", "priority": 4, "labels": ["roadmap", "area:harness"],
+      "title": "Persistent scenario library with expected traces (regression fixtures)",
+      "description": "beads.md item 7. Versioned YAML scenarios + golden trace hashes." },
+    { "key": "r8", "parent_key": "e8", "type": "feature", "priority": 4, "labels": ["roadmap", "observability"],
+      "title": "Observability: OpenTelemetry traces, Prometheus metrics (control overhead, delivery ratio, FG size)",
+      "description": "beads.md item 8. Metrics derived from the EventBus." },
+    { "key": "r9", "parent_key": "e8", "type": "feature", "priority": 4, "labels": ["roadmap", "security"],
+      "title": "Optional packet authentication and integrity",
+      "description": "beads.md item 9." },
+    { "key": "r10", "parent_key": "e8", "type": "feature", "priority": 4, "labels": ["roadmap", "area:sim"],
+      "title": "Distributed deployment across machines/containers",
+      "description": "beads.md item 10." },
+    { "key": "r12", "parent_key": "e8", "type": "feature", "priority": 4, "labels": ["roadmap", "area:protocol"],
+      "title": "Mobility prediction / adaptive refresh (GPS fields, RET, E-ODMRP style)",
+      "description": "design.md out-of-scope item. Optional Join Query/Reply fields from draft section 3.7 and 4.x; adaptive REFRESH_INTERVAL between MIN/MAX." }
+  ],
+  "edges": [
+    { "from_key": "p1-models", "to_key": "d-ids" },
+    { "from_key": "p1-neighbors", "to_key": "p1-models" },
+    { "from_key": "p1-clock", "to_key": "p1-models" },
+    { "from_key": "p1-delivery", "to_key": "p1-neighbors" },
+    { "from_key": "p1-delivery", "to_key": "p1-clock" },
+    { "from_key": "p1-timers", "to_key": "p1-clock" },
+    { "from_key": "p1-rest-min", "to_key": "p1-delivery" },
+
+    { "from_key": "p6-protocol", "to_key": "d-interface" },
+    { "from_key": "p6-protocol", "to_key": "p1-models" },
+    { "from_key": "p6-protocol", "to_key": "p1-timers" },
+    { "from_key": "p6-trace", "to_key": "d-trace" },
+    { "from_key": "p6-trace", "to_key": "p1-clock" },
+
+    { "from_key": "p2-tables", "to_key": "d-fg-scope" },
+    { "from_key": "p2-tables", "to_key": "d-jr-table" },
+    { "from_key": "p2-tables", "to_key": "p6-protocol" },
+    { "from_key": "p2-seq", "to_key": "d-ids" },
+    { "from_key": "p2-jq-originate", "to_key": "d-jq-piggyback" },
+    { "from_key": "p2-jq-originate", "to_key": "p2-tables" },
+    { "from_key": "p2-jq-originate", "to_key": "p2-seq" },
+    { "from_key": "p2-jq-originate", "to_key": "p1-delivery" },
+    { "from_key": "p2-jq-process", "to_key": "p2-jq-originate" },
+    { "from_key": "p2-jr-originate", "to_key": "p2-jq-process" },
+    { "from_key": "p2-jr-process", "to_key": "p2-jr-originate" },
+    { "from_key": "p2-softstate", "to_key": "p2-jr-process" },
+    { "from_key": "p2-data-forward", "to_key": "p2-jr-process" },
+    { "from_key": "p2-config", "to_key": "p2-tables" },
+    { "from_key": "p2-unit-tests", "to_key": "p2-data-forward" },
+    { "from_key": "p2-unit-tests", "to_key": "p2-softstate" },
+    { "from_key": "p2-unit-tests", "to_key": "p2-config" },
+    { "from_key": "p2-unit-tests", "to_key": "p6-trace" },
+
+    { "from_key": "p3-message-api", "to_key": "p2-data-forward" },
+    { "from_key": "p3-chunking", "to_key": "p3-message-api" },
+    { "from_key": "p3-delivery-report", "to_key": "p3-chunking" },
+    { "from_key": "p3-delivery-report", "to_key": "p6-trace" },
+
+    { "from_key": "p4-app", "to_key": "p1-rest-min" },
+    { "from_key": "p4-rest", "to_key": "p4-app" },
+    { "from_key": "p4-rest", "to_key": "p3-chunking" },
+    { "from_key": "p4-rest", "to_key": "p2-config" },
+    { "from_key": "p4-ws", "to_key": "p4-app" },
+    { "from_key": "p4-ws", "to_key": "p6-trace" },
+    { "from_key": "p4-controls", "to_key": "p4-ws" },
+    { "from_key": "p4-api-tests", "to_key": "p4-rest" },
+    { "from_key": "p4-api-tests", "to_key": "p4-controls" },
+    { "from_key": "p4-api-tests", "to_key": "p3-delivery-report" },
+
+    { "from_key": "p5-scaffold", "to_key": "d-frontend" },
+    { "from_key": "p5-scaffold", "to_key": "p4-ws" },
+    { "from_key": "p5-graph", "to_key": "p5-scaffold" },
+    { "from_key": "p5-highlight", "to_key": "p5-graph" },
+    { "from_key": "p5-animation", "to_key": "p5-highlight" },
+    { "from_key": "p5-controls", "to_key": "p5-graph" },
+    { "from_key": "p5-controls", "to_key": "p4-rest" },
+    { "from_key": "p5-controls", "to_key": "p4-controls" },
+    { "from_key": "p5-files", "to_key": "p5-controls" },
+    { "from_key": "p5-files", "to_key": "p3-delivery-report" },
+
+    { "from_key": "p6-bdd", "to_key": "p4-api-tests" },
+    { "from_key": "p6-determinism", "to_key": "p2-unit-tests" },
+    { "from_key": "p6-external-doc", "to_key": "p6-protocol" },
+    { "from_key": "p6-external-doc", "to_key": "p4-ws" },
+
+    { "from_key": "p7-demo", "to_key": "p5-files" },
+    { "from_key": "p7-demo", "to_key": "p5-animation" },
+    { "from_key": "p7-demo", "to_key": "p6-bdd" },
+    { "from_key": "p7-demo", "to_key": "p6-determinism" },
+
+    { "from_key": "r11", "to_key": "p2-softstate" },
+    { "from_key": "r1", "to_key": "p6-external-doc" },
+    { "from_key": "r2", "to_key": "r1" },
+    { "from_key": "r2", "to_key": "r7" },
+    { "from_key": "r3", "to_key": "r1" },
+    { "from_key": "r3", "to_key": "r11" },
+    { "from_key": "r4", "to_key": "p5-animation" },
+    { "from_key": "r5", "to_key": "r11" },
+    { "from_key": "r6", "to_key": "r11" },
+    { "from_key": "r6", "to_key": "r5" },
+    { "from_key": "r7", "to_key": "p6-determinism" },
+    { "from_key": "r8", "to_key": "p6-trace" },
+    { "from_key": "r9", "to_key": "r3" },
+    { "from_key": "r10", "to_key": "r3" },
+    { "from_key": "r12", "to_key": "p2-softstate" }
+  ]
+}
