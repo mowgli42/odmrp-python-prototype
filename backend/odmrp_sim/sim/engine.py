@@ -2,20 +2,26 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
+from pathlib import Path
+from typing import Any, Literal
 
 from odmrp_sim.events.bus import EventBus
 from odmrp_sim.model.packets import GroupId, NodeId, reset_packet_ids
 from odmrp_sim.model.params import ProtocolParams
 from odmrp_sim.model.state import Position
 from odmrp_sim.model.topology import Topology
+from odmrp_sim.protocol.external_node import ExternalProcessNode
+from odmrp_sim.protocol.interface import ODMRPNode
 from odmrp_sim.protocol.python_node import PythonODMRPNode
 from odmrp_sim.sim.medium import Medium
 from odmrp_sim.sim.node_host import NodeHost
 from odmrp_sim.sim.rng import SeededRng, derive_seed
 from odmrp_sim.sim.scheduler import Event, Scheduler
+
+NodeImplName = Literal["python", "java", "external"]
 
 
 class SimMode(str, Enum):
@@ -30,6 +36,13 @@ class SimulationEngine:
     scenario: str | None = None
     mode: SimMode = SimMode.PAUSED
     speed: float = 1.0
+    # Default implementation for new nodes; per-node override via node_impls / add_node(impl=...).
+    default_impl: NodeImplName = "python"
+    node_impls: dict[NodeId, NodeImplName] = field(default_factory=dict)
+    java_jar: Path | None = None
+    java_bin: str | None = None
+    external_command: Sequence[str] | None = None
+    node_factory: Callable[[NodeId], ODMRPNode] | None = None
 
     def __post_init__(self) -> None:
         self.topology = Topology(default_range=130.0)
@@ -56,6 +69,10 @@ class SimulationEngine:
         self.mode = SimMode.PAUSED
         self.speed = 1.0
         self.scenario = None
+        for host in list(self.hosts.values()):
+            impl = host.impl
+            if isinstance(impl, ExternalProcessNode):
+                impl.close()
         self.topology.clear()
         self.hosts.clear()
         self.scheduler.reset()
@@ -74,15 +91,40 @@ class SimulationEngine:
         reset_packet_ids()
         self.bus.emit(0.0, -1, "sim", op="reset", seed=self.seed)
 
-    def add_node(self, x: float, y: float, range_: float | None = None, node_id: NodeId | None = None) -> NodeId:
+    def set_node_impls(self, mapping: Mapping[NodeId, NodeImplName]) -> None:
+        self.node_impls = dict(mapping)
+
+    def _make_impl(self, node_id: NodeId, impl_name: NodeImplName | None = None) -> ODMRPNode:
+        if self.node_factory is not None:
+            return self.node_factory(node_id)
+        name: NodeImplName = impl_name or self.node_impls.get(node_id, self.default_impl)
+        if name == "python":
+            return PythonODMRPNode()
+        if name == "java":
+            return ExternalProcessNode.java(jar=self.java_jar, java_bin=self.java_bin)
+        if name == "external":
+            if not self.external_command:
+                raise ValueError("external_command required when impl=external")
+            return ExternalProcessNode(command=list(self.external_command))
+        raise ValueError(f"unknown node impl: {name}")
+
+    def add_node(
+        self,
+        x: float,
+        y: float,
+        range_: float | None = None,
+        node_id: NodeId | None = None,
+        *,
+        impl: NodeImplName | None = None,
+    ) -> NodeId:
         nid = self._next_id if node_id is None else node_id
         self._next_id = max(self._next_id, nid + 1)
         r = self.topology.default_range if range_ is None else range_
         self.topology.add(nid, x, y, r)
-        impl = PythonODMRPNode()
+        node_impl = self._make_impl(nid, impl)
         host = NodeHost(
             nid,
-            impl,
+            node_impl,
             self.params,
             self.bus,
             self.medium,
@@ -94,14 +136,16 @@ class SimulationEngine:
         return nid
 
     def remove_node(self, node_id: NodeId) -> None:
-        self.hosts.pop(node_id, None)
+        host = self.hosts.pop(node_id, None)
+        if host is not None and isinstance(host.impl, ExternalProcessNode):
+            host.impl.close()
         self.topology.remove(node_id)
 
     def move_node(self, node_id: NodeId, x: float, y: float) -> None:
         self.topology.move(node_id, x, y)
         host = self.hosts[node_id]
         host.pos = Position(x, y)
-        if isinstance(host.impl, PythonODMRPNode):
+        if isinstance(host.impl, (PythonODMRPNode, ExternalProcessNode)):
             host.impl.pos = host.pos
 
     def join(self, node_id: NodeId, group: GroupId) -> None:

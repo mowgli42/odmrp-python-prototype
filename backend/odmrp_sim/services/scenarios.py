@@ -22,7 +22,14 @@ def load_scenario(engine: SimulationEngine, path: Path | str, messaging=None) ->
     engine.medium.params = engine.params
 
     for n in data.get("nodes", []):
-        engine.add_node(float(n["x"]), float(n["y"]), n.get("range"), node_id=int(n["id"]))
+        nid = int(n["id"])
+        impl = n.get("impl")
+        if impl is not None:
+            engine.add_node(
+                float(n["x"]), float(n["y"]), n.get("range"), node_id=nid, impl=impl
+            )
+        else:
+            engine.add_node(float(n["x"]), float(n["y"]), n.get("range"), node_id=nid)
 
     # Schedule script ops by advancing time between them
     script = sorted(data.get("script", []), key=lambda s: float(s.get("at", 0)))

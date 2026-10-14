@@ -39,13 +39,13 @@
 
 ## Phase 6c – Minimal Java ODMRPNode reference (differential testing)
 Spec: `specs/java-reference/spec.md`. Beads epic `odmrp-7o1` (parent `odmrp-azt`). IDs: `docs/beads/java-ids.json`.
-- [ ] Scaffold Java project (jar) implementing ADR-005 ops over NDJSON stdio — `odmrp-a9f`
-- [ ] Port packet/state JSON models to match Python `to_dict`/`from_dict` — `odmrp-6p1`
-- [ ] Implement JQ flood, reverse-path learning, JR table / FG soft-state, data forward — `odmrp-2i1`
-- [ ] Implement source originate + refresh via `advance` / `next_timer` — `odmrp-gwg`
-- [ ] Python `ExternalProcessNode` launches the Java jar (`odmrp-dn0` → `odmrp-nud`)
-- [ ] All-Java `basic-mesh` matches Python FG `{1,3}` and delivery `{3,5}` — `odmrp-cko`
-- [ ] Mixed Python/Java mesh delivers; compact trace diff in CI precursor (`odmrp-cko` → `odmrp-izv`) — `odmrp-awl`
+- [x] Scaffold Java project (jar) implementing ADR-005 ops over NDJSON stdio — `odmrp-a9f`
+- [x] Port packet/state JSON models to match Python `to_dict`/`from_dict` — `odmrp-6p1`
+- [x] Implement JQ flood, reverse-path learning, JR table / FG soft-state, data forward — `odmrp-2i1`
+- [x] Implement source originate + refresh via `advance` / `next_timer` — `odmrp-gwg`
+- [x] Python `ExternalProcessNode` launches the Java jar (`odmrp-dn0` → `odmrp-nud`)
+- [x] All-Java `basic-mesh` matches Python FG `{1,3}` and delivery `{3,5}` — `odmrp-cko`
+- [x] Mixed Python/Java mesh delivers; compact trace diff in CI precursor (`odmrp-cko` → `odmrp-izv`) — `odmrp-awl`
 
 ## Phase 7 – Demo Closure
 - [x] DEMO.md with exact run commands

@@ -6,11 +6,11 @@ Each item is now tracked as a bead under the roadmap epic `odmrp-azt` (`bd list 
 The bead IDs below are the source of truth for status and dependencies; this file is the narrative.
 Two items (11 and 12) were added by the architecture review (`docs/review/architecture-review.md`).
 
-1. **External node adapter** — `odmrp-dn0`  
-   Implement a process-based adapter so an external binary can act as one or more nodes (NDJSON stdio per `docs/external-node-contract.md`). First consumer: the minimal Java reference.
+1. **External node adapter** — `odmrp-dn0` ✅  
+   `ExternalProcessNode` speaks NDJSON stdio (`docs/external-node-contract.md`). First consumer: the minimal Java reference.
 
-1b. **Minimal Java ODMRPNode reference** — `odmrp-7o1` (parent `odmrp-azt`; see `specs/java-reference/spec.md`, `docs/beads/java-ids.json`)  
-   Small Java implementation of the same ADR-005 interface as `PythonODMRPNode` (JQ flood, reverse-path learning, JR/FG soft-state, data forward) for differential testing. Success: all-Java `basic-mesh` matches Python FG `{1,3}` and delivery `{3,5}`. Tasks: scaffold `odmrp-a9f` → models `odmrp-6p1` → protocol `odmrp-2i1` → timers `odmrp-gwg`; adapter `odmrp-nud` (blocked by `odmrp-dn0`); diff `odmrp-cko` / mixed `odmrp-awl` (`odmrp-cko` blocks `odmrp-izv`).
+1b. **Minimal Java ODMRPNode reference** — `odmrp-7o1` ✅ (parent `odmrp-azt`; see `specs/java-reference/spec.md`, `java-node/`)  
+   Small Java implementation of the same ADR-005 interface as `PythonODMRPNode`. All-Java `basic-mesh` matches Python FG `{1,3}` and delivery `{3,5}` (`tests/unit/test_java_reference.py`).
 
 2. **Deterministic multi-implementation comparison** — `odmrp-izv`  
    Run the same scenario against pure-Python and pure-Java (then Rust/C++) node sets and diff the traces. Fail CI if FG membership or delivery sets diverge.

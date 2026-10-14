@@ -17,6 +17,18 @@ cd frontend && npm install && npm run dev -- --host 127.0.0.1 --port 5173
 
 Open http://127.0.0.1:5173/ — see `DEMO.md` for the walkthrough.
 
+### Java reference node (differential testing)
+
+Requires JDK 17+. Build the NDJSON jar, then run the Python harness tests:
+
+```bash
+cd java-node && ./build.sh
+cd ../backend && JAVA_HOME=~/tools/jdk python -m pytest tests/unit/test_java_reference.py -v
+```
+
+The simulator can back any node with `impl=java` via `ExternalProcessNode`
+(`SimulationEngine(default_impl="java")` or per-node YAML `impl: java`).
+
 ## Purpose
 - Observable, deterministic simulation of ODMRP (mesh-based forwarding group, soft-state, Join Query / Join Reply).
 - Interactive Svelte frontend showing nodes, links, FG membership, and live traffic.
