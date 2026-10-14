@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="820" viewBox="0 0 1280 820" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" xml:space="preserve">
+  <defs>
+    <style>
+      .panel { fill:#ffffff; stroke:#d0d5dd; }
+      .bg { fill:#f5f6f8; }
+      .t { fill:#101828; }
+      .m { fill:#667085; }
+      .h { fill:#101828; font-weight:600; }
+      .btn { fill:#ffffff; stroke:#98a2b3; rx:6; }
+      .btn-primary { fill:#1d4ed8; stroke:#1d4ed8; rx:6; }
+      .chip { fill:#eef2f6; stroke:#d0d5dd; rx:10; }
+      .link { stroke:#b8c0cc; stroke-width:2; }
+      .mesh { stroke:#f59e0b; stroke-width:5; stroke-linecap:round; opacity:0.85; }
+      .node { fill:#ffffff; stroke:#475467; stroke-width:2; }
+      .src { fill:#1d4ed8; stroke:#1e3a8a; stroke-width:2; }
+      .member { fill:none; stroke:#15803d; stroke-width:3; }
+      .fg { fill:#f59e0b; opacity:0.28; }
+      .lbl { fill:#101828; font-weight:600; text-anchor:middle; }
+      .lblw { fill:#ffffff; font-weight:600; text-anchor:middle; }
+      .pk-jq { fill:#7c3aed; }
+      .pk-jr { fill:#0d9488; }
+      .pk-data { fill:#ea580c; }
+      .row { fill:#101828; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
+      .bar { fill:#e4e7ec; rx:3; }
+      .barfill { fill:#f59e0b; rx:3; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1280" height="820"/>
+
+  <!-- Toolbar -->
+  <rect class="panel" x="0" y="0" width="1280" height="56"/>
+  <text class="h" x="16" y="34" font-size="16">ODMRP Lab</text>
+  <rect class="btn" x="130" y="15" width="170" height="28"/>
+  <text class="t" x="142" y="34">Scenario: basic-mesh ▾</text>
+  <rect class="btn-primary" x="320" y="15" width="68" height="28"/>
+  <text class="lblw" x="354" y="34">▶ Run</text>
+  <rect class="btn" x="396" y="15" width="76" height="28"/>
+  <text class="lbl" x="434" y="34">❚❚ Pause</text>
+  <rect class="btn" x="480" y="15" width="104" height="28"/>
+  <text class="lbl" x="532" y="34">⏭ Step 0.5 s</text>
+  <text class="m" x="604" y="34">Speed</text>
+  <line x1="650" y1="29" x2="760" y2="29" stroke="#98a2b3" stroke-width="3"/>
+  <circle cx="686" cy="29" r="7" fill="#1d4ed8"/>
+  <text class="t" x="770" y="34">1×</text>
+  <rect class="chip" x="820" y="15" width="150" height="28"/>
+  <text class="row" x="832" y="34">t = 4.250 s</text>
+  <rect x="980" y="15" width="84" height="28" rx="14" fill="#fef3c7" stroke="#f59e0b"/>
+  <text class="lbl" x="1022" y="34" fill="#92400e">PAUSED</text>
+  <rect class="btn" x="1080" y="15" width="90" height="28"/>
+  <text class="lbl" x="1125" y="34">⚙ Params</text>
+  <rect class="btn" x="1180" y="15" width="84" height="28"/>
+  <text class="lbl" x="1222" y="34">⇩ Trace</text>
+
+  <!-- Left panel: session + legend -->
+  <rect class="panel" x="12" y="68" width="212" height="572"/>
+  <text class="h" x="24" y="92">Session</text>
+  <rect class="btn" x="24" y="102" width="188" height="28"/>
+  <text class="t" x="34" y="121">src 0 → demo ▾</text>
+  <text class="m" x="24" y="150">next refresh in</text>
+  <rect class="bar" x="24" y="158" width="188" height="8"/>
+  <rect class="barfill" x="24" y="158" width="110" height="8" fill="#1d4ed8"/>
+  <text class="row" x="24" y="184">1.75 s  (seq 2)</text>
+
+  <text class="h" x="24" y="222">Legend</text>
+  <rect class="src" x="24" y="236" width="16" height="16"/>
+  <text class="t" x="50" y="249">source</text>
+  <circle class="node" cx="32" cy="272" r="8"/>
+  <text class="t" x="50" y="277">node</text>
+  <circle class="member" cx="32" cy="300" r="9"/>
+  <text class="t" x="50" y="305">group member</text>
+  <circle class="fg" cx="32" cy="330" r="14"/>
+  <circle class="node" cx="32" cy="330" r="8"/>
+  <text class="t" x="50" y="335">forwarding group (halo fades)</text>
+  <line class="link" x1="22" y1="362" x2="42" y2="362"/>
+  <text class="t" x="50" y="366">link (in range)</text>
+  <line class="mesh" x1="22" y1="388" x2="42" y2="388"/>
+  <text class="t" x="50" y="392">mesh link</text>
+  <circle class="pk-jq" cx="32" cy="418" r="5"/>
+  <text class="t" x="50" y="422">Join Query</text>
+  <circle class="pk-jr" cx="32" cy="442" r="5"/>
+  <text class="t" x="50" y="446">Join Reply</text>
+  <circle class="pk-data" cx="32" cy="466" r="5"/>
+  <text class="t" x="50" y="470">Data / chunk</text>
+  <text class="m" x="24" y="496" font-size="11">× at a node = dropped (dup / not FG / ttl)</text>
+
+  <text class="h" x="24" y="536">Topology</text>
+  <rect class="btn" x="24" y="548" width="88" height="26"/>
+  <text class="lbl" x="68" y="565">+ Node</text>
+  <rect class="btn" x="120" y="548" width="92" height="26"/>
+  <text class="lbl" x="166" y="565">Range 130</text>
+  <text class="m" x="24" y="600" font-size="11">drag a node to move it; links update live</text>
+  <text class="m" x="24" y="616" font-size="11">click a node to inspect; shift-click = source</text>
+
+  <!-- Canvas -->
+  <rect class="panel" x="236" y="68" width="736" height="572"/>
+  <!-- range circle for selected node 3 -->
+  <circle cx="630" cy="220" r="208" fill="none" stroke="#1d4ed8" stroke-dasharray="6 6" opacity="0.5"/>
+  <!-- links -->
+  <line class="link" x1="310" y1="348" x2="470" y2="220"/>
+  <line class="link" x1="310" y1="348" x2="470" y2="476"/>
+  <line class="link" x1="470" y1="220" x2="630" y2="220"/>
+  <line class="link" x1="470" y1="476" x2="630" y2="476"/>
+  <line class="link" x1="630" y1="220" x2="790" y2="348"/>
+  <line class="link" x1="630" y1="476" x2="790" y2="348"/>
+  <!-- mesh links -->
+  <line class="mesh" x1="310" y1="348" x2="470" y2="220"/>
+  <line class="mesh" x1="470" y1="220" x2="630" y2="220"/>
+  <line class="mesh" x1="630" y1="220" x2="790" y2="348"/>
+  <!-- FG halos -->
+  <circle class="fg" cx="470" cy="220" r="34"/>
+  <circle class="fg" cx="630" cy="220" r="34" opacity="0.18"/>
+  <!-- nodes -->
+  <rect class="src" x="294" y="332" width="32" height="32" rx="4"/>
+  <text class="lblw" x="310" y="353">0</text>
+  <circle class="node" cx="470" cy="220" r="18"/>
+  <text class="lbl" x="470" y="225">1</text>
+  <circle class="node" cx="470" cy="476" r="18"/>
+  <text class="lbl" x="470" y="481">2</text>
+  <circle class="node" cx="630" cy="220" r="18" stroke="#1d4ed8" stroke-width="3"/>
+  <circle class="member" cx="630" cy="220" r="24"/>
+  <text class="lbl" x="630" y="225">3</text>
+  <circle class="node" cx="630" cy="476" r="18"/>
+  <text class="lbl" x="630" y="481">4</text>
+  <circle class="node" cx="790" cy="348" r="18"/>
+  <circle class="member" cx="790" cy="348" r="24"/>
+  <text class="lbl" x="790" y="353">5</text>
+  <!-- badges -->
+  <text class="m" x="454" y="262" font-size="11">FG 6.2 s</text>
+  <text class="m" x="614" y="262" font-size="11">FG 6.2 s · member</text>
+  <text class="m" x="770" y="390" font-size="11">member</text>
+  <text class="m" x="280" y="390" font-size="11">source · seq 2</text>
+  <!-- packets in flight -->
+  <circle class="pk-data" cx="560" cy="220" r="7"/>
+  <text class="m" x="548" y="206" font-size="10">DATA 0:2</text>
+  <circle class="pk-data" cx="712" cy="286" r="7"/>
+  <circle class="pk-jq" cx="550" cy="476" r="7"/>
+  <text class="m" x="536" y="500" font-size="10">JQ 0:2 (dup at 4)</text>
+  <text x="470" y="520" text-anchor="middle" fill="#dc2626" font-weight="700" font-size="14">×</text>
+  <text class="m" x="440" y="536" font-size="10">not FG</text>
+  <!-- canvas footer -->
+  <text class="m" x="248" y="628" font-size="11">6 nodes · 6 links · FG {1, 3} · members {3, 5} · zoom 100% · (x 300, y 120)</text>
+
+  <!-- Right panel: inspector summary -->
+  <rect class="panel" x="984" y="68" width="284" height="572"/>
+  <text class="h" x="996" y="92" font-size="15">Node 3</text>
+  <rect class="chip" x="1060" y="78" width="60" height="20"/>
+  <text class="t" x="1068" y="92" font-size="11">member</text>
+  <rect class="chip" x="1126" y="78" width="40" height="20" fill="#fef3c7"/>
+  <text class="t" x="1134" y="92" font-size="11">FG</text>
+  <rect class="btn" x="1196" y="76" width="62" height="24"/>
+  <text class="lbl" x="1227" y="92" font-size="11">Open ▸</text>
+
+  <text class="m" x="996" y="118">position</text>
+  <text class="row" x="1080" y="118">x 300  y 120  range 130</text>
+  <text class="m" x="996" y="138">neighbours</text>
+  <text class="row" x="1080" y="138">1, 5</text>
+
+  <text class="h" x="996" y="168">Groups</text>
+  <rect class="chip" x="996" y="178" width="70" height="22" fill="#dcfce7" stroke="#15803d"/>
+  <text class="t" x="1006" y="193">demo ✓</text>
+  <rect class="btn" x="1074" y="178" width="60" height="22"/>
+  <text class="lbl" x="1104" y="193" font-size="11">Leave</text>
+  <rect class="btn" x="1142" y="178" width="116" height="22"/>
+  <text class="lbl" x="1200" y="193" font-size="11">+ Join group…</text>
+
+  <text class="h" x="996" y="228">Forwarding group</text>
+  <text class="row" x="996" y="248">demo</text>
+  <rect class="bar" x="1050" y="240" width="150" height="8"/>
+  <rect class="barfill" x="1050" y="240" width="104" height="8"/>
+  <text class="row" x="1208" y="248">6.2 s</text>
+  <text class="m" x="996" y="266" font-size="11">refreshed by 5 @ 4.06 s</text>
+
+  <text class="h" x="996" y="296">Routing table</text>
+  <text class="m" x="996" y="314" font-size="11">source   next hop   seq   expires</text>
+  <text class="row" x="996" y="332">0        1          2     7.1 s</text>
+
+  <text class="h" x="996" y="362">Message cache</text>
+  <text class="row" x="996" y="380">3 / 1024   last: (0,2) (0,1)</text>
+
+  <text class="h" x="996" y="410">Inbox</text>
+  <rect x="996" y="420" width="262" height="40" rx="6" fill="#f8fafc" stroke="#e4e7ec"/>
+  <text class="t" x="1004" y="436">“ODMRP works”</text>
+  <text class="m" x="1004" y="452" font-size="11">from 0 · t 1.21 s · path 0 → 1 → 3</text>
+
+  <text class="h" x="996" y="490">Pending membership</text>
+  <text class="m" x="996" y="508" font-size="11">— (first Join Reply sent at 1.19 s)</text>
+
+  <rect class="btn" x="996" y="540" width="124" height="28"/>
+  <text class="lbl" x="1058" y="558">Send from here</text>
+  <rect class="btn" x="1130" y="540" width="128" height="28"/>
+  <text class="lbl" x="1194" y="558">Make source</text>
+  <rect class="btn" x="996" y="576" width="262" height="28" stroke="#dc2626"/>
+  <text class="lbl" x="1127" y="594" fill="#dc2626">Remove node</text>
+
+  <!-- Bottom: event log -->
+  <rect class="panel" x="12" y="652" width="1256" height="156"/>
+  <text class="h" x="24" y="674">Events</text>
+  <rect class="chip" x="90" y="660" width="40" height="20" fill="#ede9fe"/>
+  <text class="t" x="99" y="674" font-size="11">JQ</text>
+  <rect class="chip" x="136" y="660" width="40" height="20" fill="#ccfbf1"/>
+  <text class="t" x="146" y="674" font-size="11">JR</text>
+  <rect class="chip" x="182" y="660" width="52" height="20" fill="#ffedd5"/>
+  <text class="t" x="190" y="674" font-size="11">DATA</text>
+  <rect class="chip" x="240" y="660" width="52" height="20"/>
+  <text class="t" x="248" y="674" font-size="11">state</text>
+  <rect class="chip" x="298" y="660" width="60" height="20"/>
+  <text class="t" x="306" y="674" font-size="11">deliver</text>
+  <rect class="chip" x="364" y="660" width="54" height="20"/>
+  <text class="t" x="372" y="674" font-size="11">drops</text>
+  <text class="m" x="440" y="674" font-size="11">node: all ▾   group: demo ▾   follow ✓</text>
+  <text class="m" x="24" y="698" font-size="11">t         node  kind         detail</text>
+  <text class="row" x="24" y="716">4.250     1     tx DATA      0:2 → [0, 3]</text>
+  <text class="row" x="24" y="732">4.238     1     rx DATA      0:2 from 0</text>
+  <text class="row" x="24" y="748">4.238     2     drop         0:2 reason=not_fg</text>
+  <text class="row" x="24" y="764">4.226     0     tx DATA      0:2 → [1, 2]   (no JQ header: session established)</text>
+  <text class="row" x="24" y="780">4.060     3     state.fg     demo refresh expires_at=13.06 by 5</text>
+  <text class="row" x="24" y="796">4.012     5     tx JR        demo [(0 → 3)]</text>
+</svg>
