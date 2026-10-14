@@ -1,6 +1,8 @@
 # External node contract (ADR-005 / roadmap `odmrp-dn0`)
 
-An external C++/Rust ODMRP binary speaks **NDJSON over stdio**. One request in flight at a time; every request gets exactly one reply.
+An external ODMRP binary (minimal **Java reference** first; later C++/Rust) speaks **NDJSON over stdio**. One request in flight at a time; every request gets exactly one reply.
+
+Behavioural requirements for the Java reference: `specs/java-reference/spec.md`.
 
 ## Lifecycle
 1. Host spawns process with `configure` as the first message.
@@ -34,9 +36,11 @@ An external C++/Rust ODMRP binary speaks **NDJSON over stdio**. One request in f
 `packets` use the same `Packet.to_dict()` schema as the Python reference (`docs/architecture/03-data-model-and-interfaces.md`).
 
 ## Conformance checklist
-- [ ] Deterministic given the same `rng_seed` and call sequence
-- [ ] `advance(now)` fires every timer with `due <= now` in due order
-- [ ] Duplicate `(source, seq)` Join Queries are dropped with no state change
-- [ ] FG keyed by group (unless `fg_scope=source_group`)
-- [ ] Join Reply is a table; once-per-refresh suppression when the table is unchanged
-- [ ] Trace-comparable: identical `(kind, node, payload)` stream vs Python on `basic-mesh` with jitter 0
+- [x] Deterministic given the same `rng_seed` and call sequence
+- [x] `advance(now)` fires every timer with `due <= now` in due order
+- [x] Duplicate `(source, seq)` Join Queries are dropped with no state change
+- [x] FG keyed by group (unless `fg_scope=source_group`)
+- [x] Join Reply is a table; once-per-refresh suppression when the table is unchanged
+- [x] Trace-comparable: identical `(kind, node, payload)` stream vs Python on `basic-mesh` with jitter 0
+
+First conforming implementation: `java-node/` (`java -jar java-node/dist/odmrp-java-node.jar`), driven by `ExternalProcessNode` (`odmrp_sim.protocol.external_node`).

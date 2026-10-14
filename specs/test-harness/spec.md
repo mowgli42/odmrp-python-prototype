@@ -4,7 +4,7 @@
 
 The node seam is the ADR-005 `ODMRPNode` interface (`configure`, `set_membership`, `originate`, `receive`, `advance`, `next_timer`, `get_state`). See `design.md` and `docs/architecture/03-data-model-and-interfaces.md` §3.3.
 
-The prototype is structured so that the Python ODMRP implementation can later be replaced (node-by-node or entirely) by external implementations written in C++ or Rust. The simulator owns topology, timing, and packet delivery; external nodes communicate via a well-defined control and data interface.
+The prototype is structured so that the Python ODMRP implementation can later be replaced (node-by-node or entirely) by external implementations. The **first external language is a minimal Java reference** that implements the same `ODMRPNode` operations for differential testing (`specs/java-reference/spec.md`). C++ and Rust remain roadmap targets. The simulator owns topology, timing, and packet delivery; external nodes communicate via the NDJSON stdio contract in `docs/external-node-contract.md`.
 
 ## ADDED Requirements
 
@@ -16,6 +16,13 @@ Each node’s ODMRP state machine SHALL be accessible through a narrow interface
 Given the simulator is configured to use an external ODMRP implementation for node 4
 When the simulator delivers a Join Query to node 4
 Then the external implementation is invoked and may return zero or more packets to transmit
+```
+
+#### Scenario: Java reference can be plugged in for one node
+```gherkin
+Given the simulator is configured to use the Java ODMRP reference for node 4
+When the simulator delivers a Join Query to node 4
+Then the Java process handles receive and may return zero or more packets to transmit
 ```
 
 ### Requirement: Trace of all control and data events is available

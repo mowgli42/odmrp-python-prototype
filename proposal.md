@@ -1,7 +1,7 @@
 # Proposal: ODMRP Python Prototype with Visualization and Test Harness Potential
 
 ## Why
-Implement a faithful, observable Python prototype of the On-Demand Multicast Routing Protocol (ODMRP) for mobile ad hoc networks (MANETs). Existing Java implementations exist but lack modern tooling for visualization, messaging/file transfer demos, and clean interfaces for later validation of C++ and Rust implementations.
+Implement a faithful, observable Python prototype of the On-Demand Multicast Routing Protocol (ODMRP) for mobile ad hoc networks (MANETs), with a **minimal first-party Java reference** behind the same `ODMRPNode` interface for differential testing. Third-party Java repos are not the success baseline; the in-repo Java agent must match Python on `basic-mesh`. Later validation targets include C++ and Rust.
 
 The prototype serves dual purposes:
 1. A learning and demonstration vehicle for ODMRP mechanics (Join Query/Join Reply, forwarding group mesh, soft-state, duplicate detection).
@@ -13,7 +13,7 @@ The prototype serves dual purposes:
 - Connectivity determined by Euclidean distance + range (with optional mobility later).
 - Svelte frontend that visualizes nodes, links, forwarding-group membership, group membership, and live traffic.
 - Support for multicast text messaging and simple file transfers.
-- OpenSpec + Gherkin that captures validated behavior and leaves clear seams for external (C++/Rust) node implementations.
+- OpenSpec + Gherkin that captures validated behavior, including `specs/java-reference/spec.md` for the minimal Java ODMRPNode and differential tests, and leaves seams for later C++/Rust nodes.
 
 ## Impact
 - Enables rapid experimentation with ODMRP parameters (refresh interval, FG timeout, etc.).

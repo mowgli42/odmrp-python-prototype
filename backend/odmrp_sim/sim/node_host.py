@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from odmrp_sim.model.packets import GroupId, NodeId, Packet, PacketKind
 from odmrp_sim.model.state import Position
+from odmrp_sim.protocol.external_node import ExternalProcessNode
 from odmrp_sim.protocol.python_node import PythonODMRPNode
 
 if TYPE_CHECKING:
@@ -35,7 +36,7 @@ class NodeHost:
         self.pos = pos
         self.range = range_
         impl.configure(node_id, params, rng_seed)
-        if isinstance(impl, PythonODMRPNode):
+        if isinstance(impl, (PythonODMRPNode, ExternalProcessNode)):
             impl.pos = pos
             impl.range = range_
 
