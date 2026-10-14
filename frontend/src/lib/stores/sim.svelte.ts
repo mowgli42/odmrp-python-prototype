@@ -44,6 +44,9 @@ class SimStore {
       await api.loadScenario('basic-mesh')
       const snap = await api.network()
       this.applySnapshot(snap)
+      // Replay the whole ring so the Trace panel shows mesh-formation events
+      // that happened during scenario load (before the socket opened).
+      this.#lastSeq = 0
       this.connectWs()
     } catch (e) {
       this.error = String(e)
