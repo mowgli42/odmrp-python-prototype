@@ -1,0 +1,37 @@
+:root {
+  color-scheme: dark;
+  --ink: #070b12;
+  --fog: #e8eef5;
+  --muted: #8aa4b8;
+  --accent: #1d4ed8;
+  --fg: #f48c54;
+  --member: #34d399;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  line-height: 1.4;
+  font-weight: 400;
+  color: var(--fog);
+  background: var(--ink);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+}
+
+button,
+input {
+  border-radius: 0;
+}
+
+a {
+  color: #93c5fd;
+}

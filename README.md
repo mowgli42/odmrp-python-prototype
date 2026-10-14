@@ -2,7 +2,20 @@
 
 Python prototype of the On-Demand Multicast Routing Protocol (ODMRP) with FastAPI backend and Svelte visualization.
 
-This repository starts with a complete **OpenSpec + Gherkin** system description so Cursor (or any AI coding assistant) can research and implement the prototype in a spec-driven way.
+The simulator, Python ODMRP reference, REST/WebSocket API, and Svelte UI are implemented under `backend/` and `frontend/`. Specs, architecture docs, and beads-tracked sequencing remain the source of truth for what was built and what is still roadmap.
+
+## Quick start
+
+```bash
+# backend
+cd backend && python3 -m pip install -e '.[dev]'
+PYTHONPATH=. python3 -m uvicorn odmrp_sim.api.app:app --host 127.0.0.1 --port 8000
+
+# frontend (other terminal)
+cd frontend && npm install && npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+Open http://127.0.0.1:5173/ — see `DEMO.md` for the walkthrough.
 
 ## Purpose
 - Observable, deterministic simulation of ODMRP (mesh-based forwarding group, soft-state, Join Query / Join Reply).

@@ -1,12 +1,15 @@
 # Test Harness Capability
 
 ## Overview
+
+The node seam is the ADR-005 `ODMRPNode` interface (`configure`, `set_membership`, `originate`, `receive`, `advance`, `next_timer`, `get_state`). See `design.md` and `docs/architecture/03-data-model-and-interfaces.md` §3.3.
+
 The prototype is structured so that the Python ODMRP implementation can later be replaced (node-by-node or entirely) by external implementations written in C++ or Rust. The simulator owns topology, timing, and packet delivery; external nodes communicate via a well-defined control and data interface.
 
 ## ADDED Requirements
 
 ### Requirement: Protocol logic is isolated behind an interface
-Each node’s ODMRP state machine SHALL be accessible through a narrow interface (process_packet, originate_join_query, get_state, etc.) so that an alternative implementation can be substituted.
+Each node’s ODMRP state machine SHALL be accessible through a narrow interface (receive, originate, get_state, etc.) so that an alternative implementation can be substituted.
 
 #### Scenario: External node can be plugged in
 ```gherkin
