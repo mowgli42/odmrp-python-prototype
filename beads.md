@@ -7,10 +7,13 @@ The bead IDs below are the source of truth for status and dependencies; this fil
 Two items (11 and 12) were added by the architecture review (`docs/review/architecture-review.md`).
 
 1. **External node adapter** — `odmrp-dn0`  
-   Implement a process-based adapter so a C++ or Rust binary can act as one or more nodes. Define the exact IPC protocol (length-prefixed JSON or protobuf) for receive/send/state.
+   Implement a process-based adapter so an external binary can act as one or more nodes (NDJSON stdio per `docs/external-node-contract.md`). First consumer: the minimal Java reference.
+
+1b. **Minimal Java ODMRPNode reference** — `odmrp-7o1` (parent `odmrp-azt`; see `specs/java-reference/spec.md`, `docs/beads/java-ids.json`)  
+   Small Java implementation of the same ADR-005 interface as `PythonODMRPNode` (JQ flood, reverse-path learning, JR/FG soft-state, data forward) for differential testing. Success: all-Java `basic-mesh` matches Python FG `{1,3}` and delivery `{3,5}`. Tasks: scaffold `odmrp-a9f` → models `odmrp-6p1` → protocol `odmrp-2i1` → timers `odmrp-gwg`; adapter `odmrp-nud` (blocked by `odmrp-dn0`); diff `odmrp-cko` / mixed `odmrp-awl` (`odmrp-cko` blocks `odmrp-izv`).
 
 2. **Deterministic multi-implementation comparison** — `odmrp-izv`  
-   Run the same scenario against pure-Python, pure-Rust, and pure-C++ node sets and diff the traces. Fail CI if FG membership or delivery sets diverge.
+   Run the same scenario against pure-Python and pure-Java (then Rust/C++) node sets and diff the traces. Fail CI if FG membership or delivery sets diverge.
 
 3. **Real networking mode** — `odmrp-32m`  
    Replace the in-process simulator with actual UDP sockets (or a TUN/TAP overlay) so protocol implementations can be tested on real or emulated wireless links. Includes the RFC 5444 codec (Join Query / Join Reply as RFC 5444 messages) that the in-process prototype deliberately skips.

@@ -1,6 +1,8 @@
 # External node contract (ADR-005 / roadmap `odmrp-dn0`)
 
-An external C++/Rust ODMRP binary speaks **NDJSON over stdio**. One request in flight at a time; every request gets exactly one reply.
+An external ODMRP binary (minimal **Java reference** first; later C++/Rust) speaks **NDJSON over stdio**. One request in flight at a time; every request gets exactly one reply.
+
+Behavioural requirements for the Java reference: `specs/java-reference/spec.md`.
 
 ## Lifecycle
 1. Host spawns process with `configure` as the first message.

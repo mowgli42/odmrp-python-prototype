@@ -1,0 +1,93 @@
+{
+  "commit_message": "Minimal Java ODMRPNode reference for differential testing",
+  "nodes": [
+    {
+      "key": "e-java",
+      "type": "epic",
+      "priority": 2,
+      "labels": ["area:harness", "area:java", "roadmap"],
+      "title": "Phase 6c - Minimal Java ODMRPNode reference (differential testing)",
+      "description": "First-party minimal Java implementation of the ADR-005 ODMRPNode contract so the harness can differentially test against PythonODMRPNode. Spec: specs/java-reference/spec.md. Not a port of third-party GitHub ODMRP repos; success is behavioural parity on basic-mesh (FG {1,3}, delivery {3,5}) with jq_jitter=0.\n\nParent roadmap epic: odmrp-azt. Unblocks meaningful work on odmrp-izv (multi-impl trace diff) and is the first non-Python appliance for GitHub issue #4 (GNS3 containers).",
+      "acceptance_criteria": "- All Gherkin scenarios in specs/java-reference/spec.md are implemented as pytest (or equivalent) and pass.\n- `java -jar odmrp-java-node.jar` speaks docs/external-node-contract.md.\n- All-Java and all-Python basic-mesh runs agree on FG and delivery sets.\n- beads.md item 1b closed via this epic."
+    },
+    {
+      "key": "j-scaffold",
+      "parent_key": "e-java",
+      "type": "task",
+      "priority": 2,
+      "labels": ["area:java"],
+      "title": "Scaffold Java node project (Maven/Gradle) with NDJSON stdio main loop",
+      "description": "Create `java-node/` (or `odmrp-java-node/`) with a runnable jar. Main loop: read one NDJSON request from stdin, dispatch op, write one NDJSON reply to stdout. Ops: configure, set_membership, originate, receive, advance, next_timer, get_state, shutdown. No protocol logic yet — FakeNode-equivalent is fine for the scaffold smoke test.",
+      "acceptance_criteria": "- `./gradlew run` or `java -jar …` answers configure + get_state.\n- Documented build command in java-node/README.md.\n- Spec scenario 'Java node answers configure and get_state' has a failing-then-passing test hook."
+    },
+    {
+      "key": "j-models",
+      "parent_key": "e-java",
+      "type": "task",
+      "priority": 2,
+      "labels": ["area:java"],
+      "title": "Java Packet and NodeState JSON models matching Python to_dict schema",
+      "description": "Port packet kinds JOIN_QUERY / JOIN_REPLY / DATA, JoinQueryHeader, JoinReplyEntry, ProtocolParams, RouteEntry, FGEntry, SourceSession, NodeState so round-trip with Python Packet.from_dict / NodeState.to_dict is lossless for fields the protocol needs. Base64 for binary payload on the wire (payload_b64) as in the external contract.",
+      "acceptance_criteria": "- Golden JSON fixtures in tests shared with Python or generated from Python.\n- Java encode/decode round-trip for a piggybacked JQ and a JR table."
+    },
+    {
+      "key": "j-protocol",
+      "parent_key": "e-java",
+      "type": "task",
+      "priority": 2,
+      "labels": ["area:java", "area:protocol"],
+      "title": "Implement Java ODMRP core: JQ, reverse path, JR/FG, data forward",
+      "description": "Mirror PythonODMRPNode behaviour from specs/odmrp/spec.md: message cache duplicate detection, route install, member JR table, FG by group, once-per-refresh JR suppression, FG-scoped data forward, local deliver to members. Defaults: route_refresh_interval=3, fg_timeout=9, route_timeout=9, join_query_ttl=32.",
+      "acceptance_criteria": "- Spec scenarios for reverse path, JR originate, FG join, FG forward, non-FG drop pass against the Java node driven by a Python host test harness."
+    },
+    {
+      "key": "j-timers",
+      "parent_key": "e-java",
+      "type": "task",
+      "priority": 2,
+      "labels": ["area:java", "area:protocol"],
+      "title": "Java soft-state and source refresh via advance / next_timer",
+      "description": "Port jr_delay scheduling, FG/route expiry, and source route_refresh / source_idle_timeout so the host scheduler can treat Java nodes identically to Python nodes.",
+      "acceptance_criteria": "- Spec scenarios 'Java FG soft-state expires' and 'Java source refreshes Join Query on interval' pass."
+    },
+    {
+      "key": "j-adapter",
+      "parent_key": "e-java",
+      "type": "task",
+      "priority": 2,
+      "labels": ["area:harness", "area:java"],
+      "title": "ExternalProcessNode launches Java jar; scenario impl: java",
+      "description": "Implement or extend odmrp-dn0 so NodeHost can use impl=java with a configurable command. Scenario YAML may set per-node impl. Shared with the generic external adapter bead.",
+      "acceptance_criteria": "- Spec scenario 'Host spawns Java node by configured command' passes.\n- One-node Java + five-node Python mesh runs without hang."
+    },
+    {
+      "key": "j-diff-basic",
+      "parent_key": "e-java",
+      "type": "task",
+      "priority": 2,
+      "labels": ["area:harness", "area:java"],
+      "title": "Differential test: all-Java vs all-Python basic-mesh",
+      "description": "Primary success criterion: scenarios/basic-mesh.yaml with jitter 0 yields FG {1,3} and delivery {3,5} for an all-Java node set, matching all-Python. Add compact trace comparison for tx / state.fg / deliver.",
+      "acceptance_criteria": "- Spec scenarios 'All-Java basic-mesh matches Python FG and delivery' and 'Compact traces match' pass in CI."
+    },
+    {
+      "key": "j-diff-mixed",
+      "parent_key": "e-java",
+      "type": "task",
+      "priority": 3,
+      "labels": ["area:harness", "area:java"],
+      "title": "Mixed Python/Java basic-mesh delivery test",
+      "description": "Run basic-mesh with a split impl map (e.g. Python on even ids, Java on odd). Assert delivery to {3,5} and that FG is a non-empty subset of intermediates.",
+      "acceptance_criteria": "- Spec scenario 'Mixed Python and Java mesh still delivers' passes."
+    }
+  ],
+  "edges": [
+    {"from_key": "j-models", "to_key": "j-scaffold", "type": "blocks"},
+    {"from_key": "j-protocol", "to_key": "j-models", "type": "blocks"},
+    {"from_key": "j-timers", "to_key": "j-protocol", "type": "blocks"},
+    {"from_key": "j-adapter", "to_key": "j-scaffold", "type": "blocks"},
+    {"from_key": "j-diff-basic", "to_key": "j-timers", "type": "blocks"},
+    {"from_key": "j-diff-basic", "to_key": "j-adapter", "type": "blocks"},
+    {"from_key": "j-diff-mixed", "to_key": "j-diff-basic", "type": "blocks"}
+  ]
+}

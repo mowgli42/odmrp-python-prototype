@@ -36,6 +36,7 @@ specs/
   messaging/spec.md
   visualization/spec.md
   test-harness/spec.md
+  java-reference/spec.md   # minimal Java ODMRPNode + differential tests
 docs/
   review/          architecture review + adherence matrix
   architecture/    C4, component, data-model, state-machine drawings

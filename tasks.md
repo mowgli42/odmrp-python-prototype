@@ -32,13 +32,23 @@
 - [ ] Connect via WebSocket
 
 ## Phase 6 – Test Harness Hooks & Gherkin
-- [ ] Define ODMRPNode protocol/interface
-- [ ] Emit structured JSON-lines trace
-- [ ] Implement Gherkin scenarios as pytest-bdd or behave tests against the running API
-- [ ] Document how an external C++/Rust node would implement the interface
+- [x] Define ODMRPNode protocol/interface
+- [x] Emit structured JSON-lines trace
+- [x] Implement Gherkin scenarios as pytest-bdd or behave tests against the running API
+- [x] Document how an external node would implement the interface
+
+## Phase 6c – Minimal Java ODMRPNode reference (differential testing)
+Spec: `specs/java-reference/spec.md`. Beads epic `odmrp-7o1` (parent `odmrp-azt`). IDs: `docs/beads/java-ids.json`.
+- [ ] Scaffold Java project (jar) implementing ADR-005 ops over NDJSON stdio — `odmrp-a9f`
+- [ ] Port packet/state JSON models to match Python `to_dict`/`from_dict` — `odmrp-6p1`
+- [ ] Implement JQ flood, reverse-path learning, JR table / FG soft-state, data forward — `odmrp-2i1`
+- [ ] Implement source originate + refresh via `advance` / `next_timer` — `odmrp-gwg`
+- [ ] Python `ExternalProcessNode` launches the Java jar (`odmrp-dn0` → `odmrp-nud`)
+- [ ] All-Java `basic-mesh` matches Python FG `{1,3}` and delivery `{3,5}` — `odmrp-cko`
+- [ ] Mixed Python/Java mesh delivers; compact trace diff in CI precursor (`odmrp-cko` → `odmrp-izv`) — `odmrp-awl`
 
 ## Phase 7 – Demo Closure
-- [ ] DEMO.md with exact run commands
-- [ ] Sample scenario that forms a mesh and delivers a message
-- [ ] Screenshot walkthrough placeholders
-- [ ] Beads roadmap for production / multi-language validation
+- [x] DEMO.md with exact run commands
+- [x] Sample scenario that forms a mesh and delivers a message
+- [x] Screenshot walkthrough placeholders
+- [x] Beads roadmap for production / multi-language validation
