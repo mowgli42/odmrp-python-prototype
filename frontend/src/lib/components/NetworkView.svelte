@@ -40,10 +40,23 @@
     const n = sim.nodes[String(id)]
     return !!n?.sessions?.some((s) => s.group === sim.selectedGroup)
   }
+  function fgOpacity(id: number) {
+    const n = sim.nodes[String(id)]
+    const fg = n?.forwarding_groups?.[sim.selectedGroup]
+    if (!fg) return 0
+    const left = Math.max(0, fg.expires_at - sim.sim.t)
+    return Math.min(1, left / 9)
+  }
+  function inMesh(id: number) {
+    return isSource(id) || isFg(id) || isMember(id)
+  }
 
-  const animPackets = $derived(
-    sim.packets.filter((p) => performance.now() - p.born < 900),
+  const meshLinks = $derived(
+    sim.topology.links.filter(([a, b]) => inMesh(a) && inMesh(b)),
   )
+
+  const animPackets = $derived(sim.packets.filter((p) => performance.now() - p.born < 900))
+  const drops = $derived(sim.flashDrops.filter((d) => performance.now() - d.born < 700))
 
   let now = $state(performance.now())
   $effect(() => {
@@ -63,13 +76,9 @@
   aria-label="ODMRP network topology"
 >
   <defs>
-    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
-      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="rgba(148,163,184,0.08)" stroke-width="1" />
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M 28 0 L 0 0 0 28" fill="none" stroke="rgba(15, 118, 110, 0.08)" stroke-width="1" />
     </pattern>
-    <radialGradient id="fgGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="rgba(244, 140, 84, 0.45)" />
-      <stop offset="100%" stop-color="rgba(244, 140, 84, 0)" />
-    </radialGradient>
   </defs>
   <rect width="100%" height="100%" fill="url(#grid)" />
 
@@ -77,13 +86,15 @@
     {@const na = sim.topology.nodes.find((n) => n.id === a)}
     {@const nb = sim.topology.nodes.find((n) => n.id === b)}
     {#if na && nb}
-      <line
-        class="link"
-        x1={sx(na.x)}
-        y1={sy(na.y)}
-        x2={sx(nb.x)}
-        y2={sy(nb.y)}
-      />
+      <line class="link" x1={sx(na.x)} y1={sy(na.y)} x2={sx(nb.x)} y2={sy(nb.y)} />
+    {/if}
+  {/each}
+
+  {#each meshLinks as [a, b]}
+    {@const na = sim.topology.nodes.find((n) => n.id === a)}
+    {@const nb = sim.topology.nodes.find((n) => n.id === b)}
+    {#if na && nb}
+      <line class="mesh" x1={sx(na.x)} y1={sy(na.y)} x2={sx(nb.x)} y2={sy(nb.y)} />
     {/if}
   {/each}
 
@@ -98,9 +109,10 @@
         class="pkt"
         class:jq={p.kind === 'JOIN_QUERY'}
         class:jr={p.kind === 'JOIN_REPLY'}
+        class:data={p.kind === 'DATA'}
         cx={x}
         cy={y}
-        r="4"
+        r="4.5"
         opacity={1 - u * 0.85}
       />
     {/if}
@@ -113,24 +125,57 @@
     {@const mem = isMember(n.id)}
     {@const src = isSource(n.id)}
     {@const sel = sim.selected === n.id}
+    {@const op = fgOpacity(n.id)}
     {#if fg}
-      <circle class="fg-halo" cx={x} cy={y} r="28" fill="url(#fgGlow)" />
+      <circle class="fg-halo" cx={x} cy={y} r="26" opacity={0.15 + op * 0.55} />
     {/if}
-    <circle
-      class="node"
-      class:fg
-      class:member={mem}
-      class:source={src}
-      class:selected={sel}
-      cx={x}
-      cy={y}
-      r="14"
-      role="button"
-      tabindex="0"
-      onclick={() => sim.select(n.id)}
-      onkeydown={(e) => e.key === 'Enter' && sim.select(n.id)}
-    />
-    <text class="label" x={x} y={y + 4} text-anchor="middle">{n.id}</text>
+    {#if src}
+      <rect
+        class="node source"
+        class:member={mem}
+        class:fg
+        class:selected={sel}
+        x={x - 13}
+        y={y - 13}
+        width="26"
+        height="26"
+        role="button"
+        tabindex="0"
+        onclick={() => sim.select(n.id)}
+        onkeydown={(e) => e.key === 'Enter' && sim.select(n.id)}
+      />
+    {:else}
+      <circle
+        class="node"
+        class:fg
+        class:member={mem}
+        class:selected={sel}
+        cx={x}
+        cy={y}
+        r="13"
+        role="button"
+        tabindex="0"
+        onclick={() => sim.select(n.id)}
+        onkeydown={(e) => e.key === 'Enter' && sim.select(n.id)}
+      />
+    {/if}
+    <text class="label" class:on-source={src} x={x} y={y + 4} text-anchor="middle">{n.id}</text>
+    {#if fg}
+      <text class="badge" x={x + 16} y={y - 14}>FG</text>
+    {/if}
+  {/each}
+
+  {#each drops as d (d.node + '-' + d.born)}
+    {@const n = sim.topology.nodes.find((nn) => nn.id === d.node)}
+    {#if n}
+      {@const x = sx(n.x)}
+      {@const y = sy(n.y)}
+      {@const fade = 1 - Math.min(1, (now - d.born) / 700)}
+      <g opacity={fade}>
+        <text class="drop-x" x={x + 18} y={y + 6}>×</text>
+        <text class="drop-r" x={x + 18} y={y + 18}>{d.reason}</text>
+      </g>
+    {/if}
   {/each}
 </svg>
 
@@ -139,52 +184,85 @@
     width: 100%;
     height: 100%;
     display: block;
-    background: linear-gradient(160deg, #0b1220 0%, #121a2b 55%, #0e1624 100%);
-    border-radius: 0;
+    background: linear-gradient(165deg, #f8fafc 0%, #eef2f6 55%, #e8eef3 100%);
   }
   .link {
-    stroke: #3d6f8c;
-    stroke-width: 1.5;
-    opacity: 0.7;
+    stroke: #94a3b8;
+    stroke-width: 1.4;
+    opacity: 0.55;
+  }
+  .mesh {
+    stroke: var(--amber);
+    stroke-width: 3.2;
+    opacity: 0.75;
   }
   .node {
-    fill: #1c2738;
-    stroke: #8aa4b8;
+    fill: #fff;
+    stroke: #64748b;
     stroke-width: 2;
     cursor: pointer;
     transition: stroke 120ms ease, fill 120ms ease;
   }
   .node:hover {
-    stroke: #e8eef5;
+    stroke: var(--ink);
   }
   .node.source {
-    fill: #1d4ed8;
+    fill: var(--source);
     stroke: #93c5fd;
   }
   .node.member {
-    stroke: #34d399;
+    stroke: var(--member);
     stroke-width: 3;
   }
   .node.fg {
-    stroke: #f48c54;
+    stroke: var(--fg);
     stroke-width: 3;
   }
   .node.selected {
-    filter: drop-shadow(0 0 6px rgba(232, 238, 245, 0.55));
+    filter: drop-shadow(0 0 0 2px rgba(21, 32, 43, 0.25));
+  }
+  .fg-halo {
+    fill: var(--amber);
+    pointer-events: none;
   }
   .label {
-    fill: #e8eef5;
-    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    fill: var(--ink);
+    font-family: var(--mono);
     font-size: 11px;
+    font-weight: 500;
+    pointer-events: none;
+  }
+  .label.on-source {
+    fill: #fff;
+  }
+  .badge {
+    fill: var(--amber);
+    font-family: var(--sans);
+    font-size: 9px;
+    font-weight: 700;
     pointer-events: none;
   }
   .pkt {
-    fill: #e8eef5;
+    fill: var(--ink);
   }
   .pkt.jq {
-    fill: #60a5fa;
+    fill: var(--blue);
   }
   .pkt.jr {
-    fill: #f48c54;
+    fill: var(--amber);
+  }
+  .pkt.data {
+    fill: var(--teal);
+  }
+  .drop-x {
+    fill: var(--coral);
+    font-size: 16px;
+    font-weight: 700;
+    font-family: var(--sans);
+  }
+  .drop-r {
+    fill: var(--coral);
+    font-size: 9px;
+    font-family: var(--mono);
   }
 </style>

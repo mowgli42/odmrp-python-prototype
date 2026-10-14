@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { api } from '../api'
   import { sim } from '../stores/sim.svelte'
 
   async function toggle() {
@@ -12,114 +13,149 @@
     <span class="mark">ODMRP</span>
     <span class="sub">mesh laboratory</span>
   </div>
-  <div class="controls">
+
+  <div class="controls" role="toolbar" aria-label="Simulation controls">
     <button type="button" class="primary" onclick={toggle}>
       {sim.sim.mode === 'running' ? 'Pause' : 'Run'}
     </button>
-    <button type="button" onclick={() => sim.step(0.1)}>Step 0.1s</button>
-    <button type="button" onclick={() => sim.reset()}>Reset scenario</button>
+    <button type="button" onclick={() => sim.step(0.1)} title="Advance 0.1 simulated seconds">
+      Step 0.1s
+    </button>
+    <button type="button" class="ghost" onclick={() => sim.reset()} title="Reload basic-mesh">
+      Reset
+    </button>
     <label class="speed">
-      Speed
+      <span>Speed</span>
       <input
         type="range"
         min="0.25"
         max="8"
         step="0.25"
         value={sim.sim.speed}
+        aria-valuetext={`${sim.sim.speed}×`}
         oninput={(e) => {
           const v = Number((e.target as HTMLInputElement).value)
           sim.sim = { ...sim.sim, speed: v }
-          import('../api').then(({ api }) => api.speed(v))
+          void api.speed(v)
         }}
       />
-      <span>{sim.sim.speed}×</span>
+      <span class="mono">{sim.sim.speed}×</span>
+    </label>
+    <label class="group">
+      <span>Group</span>
+      <input bind:value={sim.selectedGroup} aria-label="Selected multicast group" />
     </label>
   </div>
-  <div class="status" aria-live="polite">
-    <span class:ok={sim.connected} class="dot"></span>
-    <span>t = {sim.sim.t.toFixed(3)} s</span>
-    <span class="mode">{sim.sim.mode}</span>
-    <span class="scenario">{sim.sim.scenario ?? '—'}</span>
-  </div>
+
+  <p class="hint">
+    Click a node to inspect · Join/Leave in the side panel · Send from Messaging below
+  </p>
 </header>
 
 <style>
   .bar {
     display: grid;
     grid-template-columns: auto 1fr auto;
-    gap: 1.25rem;
+    gap: 1rem;
     align-items: center;
-    padding: 0.75rem 1.25rem;
-    background: rgba(8, 12, 20, 0.92);
-    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-    backdrop-filter: blur(8px);
+    padding: 0.7rem 1rem;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
   }
   .brand {
     display: flex;
     flex-direction: column;
-    line-height: 1.1;
+    line-height: 1.05;
+    min-width: 7.5rem;
   }
   .mark {
-    font-family: 'Syne', 'Arial Narrow', sans-serif;
+    font-family: var(--display);
     font-weight: 700;
     font-size: 1.35rem;
-    letter-spacing: 0.04em;
-    color: #e8eef5;
+    letter-spacing: 0.02em;
+    color: var(--ink);
   }
   .sub {
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 0.72rem;
-    color: #8aa4b8;
-    text-transform: lowercase;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.02em;
   }
   .controls {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.45rem;
     align-items: center;
   }
   button {
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 0.85rem;
-    padding: 0.4rem 0.85rem;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    background: #152033;
-    color: #e8eef5;
-    cursor: pointer;
-  }
-  button.primary {
-    background: #1d4ed8;
-    border-color: #3b82f6;
+    font-size: 0.84rem;
+    font-weight: 600;
+    padding: 0.42rem 0.85rem;
+    border: 1px solid var(--line);
+    background: var(--panel-elev);
+    color: var(--ink);
+    transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
   }
   button:hover {
-    border-color: #e8eef5;
+    border-color: var(--ink-soft);
   }
-  .speed {
+  button:active {
+    transform: translateY(1px);
+  }
+  button.primary {
+    background: var(--teal);
+    border-color: var(--teal);
+    color: #fff;
+  }
+  button.primary:hover {
+    background: var(--teal-bright);
+    border-color: var(--teal-bright);
+  }
+  button.ghost {
+    background: transparent;
+  }
+  .speed,
+  .group {
     display: inline-flex;
     gap: 0.4rem;
     align-items: center;
-    color: #8aa4b8;
-    font-size: 0.8rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 0.25rem;
   }
-  .status {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.78rem;
-    color: #b6c5d4;
+  .speed input[type='range'] {
+    width: 6.5rem;
+    accent-color: var(--teal);
   }
-  .dot {
-    width: 0.55rem;
-    height: 0.55rem;
-    border-radius: 50%;
-    background: #f87171;
+  .group input {
+    width: 5.5rem;
+    padding: 0.3rem 0.45rem;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--ink);
+    font-size: 0.84rem;
   }
-  .dot.ok {
-    background: #34d399;
+  .mono {
+    font-family: var(--mono);
+    color: var(--ink);
+    min-width: 2.2rem;
   }
-  .mode {
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+  .hint {
+    margin: 0;
+    font-size: 0.72rem;
+    color: var(--muted);
+    max-width: 16rem;
+    text-align: right;
+    line-height: 1.3;
+  }
+  @media (max-width: 960px) {
+    .bar {
+      grid-template-columns: 1fr;
+    }
+    .hint {
+      text-align: left;
+      max-width: none;
+    }
   }
 </style>

@@ -17,54 +17,147 @@
 <script lang="ts">
   import { sim } from '../stores/sim.svelte'
 
-  const recent = $derived([...sim.events].slice(-60).reverse())
+  let filter = $state<'all' | 'tx' | 'state.fg' | 'deliver' | 'drop'>('all')
+  const recent = $derived(
+    [...sim.events]
+      .filter((e) => filter === 'all' || e.kind === filter || e.kind.startsWith(filter))
+      .slice(-80)
+      .reverse(),
+  )
+
+  function selectFromEvent(e: { node: number }) {
+    if (e.node >= 0) sim.select(e.node)
+  }
 </script>
 
 <section class="trace">
-  <h2>Trace</h2>
-  <ol>
-    {#each recent as e (e.seq)}
-      <li>
-        <span class="t">{e.t.toFixed(3)}</span>
-        <span class="kind">{e.kind}</span>
-        <span class="node">n{e.node}</span>
-        <span class="detail">{summarize(e)}</span>
-      </li>
-    {/each}
-  </ol>
+  <div class="head">
+    <h2>Trace</h2>
+    <div class="chips" role="tablist" aria-label="Filter events">
+      {#each ['all', 'tx', 'state.fg', 'deliver', 'drop'] as f}
+        <button
+          type="button"
+          role="tab"
+          aria-selected={filter === f}
+          class:on={filter === f}
+          onclick={() => (filter = f as typeof filter)}
+        >
+          {f}
+        </button>
+      {/each}
+    </div>
+  </div>
+  {#if recent.length === 0}
+    <p class="empty">No events yet — press Run or Step.</p>
+  {:else}
+    <ol>
+      {#each recent as e (e.seq)}
+        <li>
+          <button type="button" class="row" onclick={() => selectFromEvent(e)}>
+            <span class="t">{e.t.toFixed(3)}</span>
+            <span class="kind" data-kind={e.kind}>{e.kind}</span>
+            <span class="node">n{e.node}</span>
+            <span class="detail">{summarize(e)}</span>
+          </button>
+        </li>
+      {/each}
+    </ol>
+  {/if}
 </section>
 
 <style>
   .trace {
-    padding: 0.75rem 1.1rem;
-    border-top: 1px solid rgba(148, 163, 184, 0.18);
-    background: #080c14;
-    max-height: 11rem;
+    padding: 0.75rem 1rem;
+    max-height: 14rem;
     overflow: auto;
   }
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.85rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.45rem;
+  }
   h2 {
-    margin: 0 0 0.4rem;
-    font-family: 'Syne', sans-serif;
+    margin: 0;
+    font-family: var(--display);
     font-size: 0.95rem;
-    color: #8aa4b8;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+  .chips button {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid var(--line);
+    background: var(--panel-elev);
+    color: var(--muted);
+  }
+  .chips button.on {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
   }
   ol {
     list-style: none;
     margin: 0;
     padding: 0;
-    font-family: 'IBM Plex Mono', monospace;
+    font-family: var(--mono);
     font-size: 0.72rem;
   }
   li {
-    display: grid;
-    grid-template-columns: 4.2rem 7.5rem 2.4rem 1fr;
-    gap: 0.55rem;
-    padding: 0.18rem 0;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.08);
-    color: #b6c5d4;
+    border-bottom: 1px solid var(--line);
   }
-  .t { color: #6b7c8f; }
-  .kind { color: #93c5fd; }
-  .node { color: #f48c54; }
-  .detail { color: #c5d0db; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row {
+    display: grid;
+    grid-template-columns: 4.2rem 7.2rem 2.4rem 1fr;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.22rem 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    color: var(--ink-soft);
+  }
+  .row:hover {
+    background: rgba(15, 118, 110, 0.06);
+  }
+  .t {
+    color: var(--muted);
+  }
+  .kind {
+    color: var(--blue);
+    font-weight: 500;
+  }
+  .kind[data-kind='deliver'] {
+    color: var(--ok);
+  }
+  .kind[data-kind='drop'] {
+    color: var(--coral);
+  }
+  .kind[data-kind='state.fg'] {
+    color: var(--amber);
+  }
+  .node {
+    color: var(--amber);
+  }
+  .detail {
+    color: var(--ink-soft);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .empty {
+    margin: 0.35rem 0;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
 </style>

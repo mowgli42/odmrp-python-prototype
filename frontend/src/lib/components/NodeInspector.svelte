@@ -1,42 +1,104 @@
 <script lang="ts">
+  import { api } from '../api'
   import { sim } from '../stores/sim.svelte'
 
   const node = $derived(sim.selected == null ? null : sim.nodes[String(sim.selected)])
+  const fg = $derived(
+    node ? node.forwarding_groups?.[sim.selectedGroup] ?? null : null,
+  )
+  const fgLeft = $derived(fg ? Math.max(0, fg.expires_at - sim.sim.t) : null)
+  const role = $derived.by(() => {
+    if (!node) return []
+    const tags: string[] = []
+    if (node.sessions?.some((s) => s.group === sim.selectedGroup)) tags.push('source')
+    if (node.members?.includes(sim.selectedGroup)) tags.push('member')
+    if (node.fg?.includes(sim.selectedGroup) || fg) tags.push('FG')
+    return tags
+  })
+
+  async function join() {
+    if (!node) return
+    await api.join(node.id, sim.selectedGroup)
+    sim.applySnapshot(await api.network())
+  }
+  async function leave() {
+    if (!node) return
+    await api.leave(node.id, sim.selectedGroup)
+    sim.applySnapshot(await api.network())
+  }
 </script>
 
 <aside class="insp">
-  <h2>Node inspector</h2>
+  <header>
+    <h2>Node inspector</h2>
+    {#if node}
+      <p class="id">Node {node.id}</p>
+    {/if}
+  </header>
+
   {#if !node}
-    <p class="empty">Select a node on the map.</p>
+    <p class="empty">Select a node on the map to see routes, FG soft-state, and inbox.</p>
   {:else}
-    <div class="id">Node {node.id}</div>
+    <div class="roles" aria-label="Node roles">
+      {#if role.length === 0}
+        <span class="tag muted">relay / idle</span>
+      {:else}
+        {#each role as r}
+          <span class="tag" data-role={r}>{r}</span>
+        {/each}
+      {/if}
+    </div>
+
     <dl>
-      <div><dt>Position</dt><dd>({node.pos.x.toFixed(0)}, {node.pos.y.toFixed(0)})</dd></div>
-      <div><dt>Range</dt><dd>{node.range}</dd></div>
-      <div><dt>Members</dt><dd>{node.members.join(', ') || '—'}</dd></div>
-      <div><dt>FG</dt><dd>{node.fg?.join(', ') || Object.keys(node.forwarding_groups || {}).join(', ') || '—'}</dd></div>
+      <div>
+        <dt>Position</dt>
+        <dd>({node.pos.x.toFixed(0)}, {node.pos.y.toFixed(0)})</dd>
+      </div>
+      <div>
+        <dt>Range</dt>
+        <dd>{node.range}</dd>
+      </div>
+      <div>
+        <dt>Groups</dt>
+        <dd>{node.members.join(', ') || '—'}</dd>
+      </div>
+      <div>
+        <dt>FG soft-state</dt>
+        <dd>
+          {#if fgLeft == null}
+            —
+          {:else}
+            {fgLeft.toFixed(1)}s
+            <span class="bar" aria-hidden="true"><i style={`width: ${Math.min(100, (fgLeft / 9) * 100)}%`}></i></span>
+          {/if}
+        </dd>
+      </div>
     </dl>
+
     <h3>Routes</h3>
     {#if Object.keys(node.routes || {}).length === 0}
-      <p class="empty">No routes</p>
+      <p class="empty">No reverse-path entries yet</p>
     {:else}
       <table>
-        <thead><tr><th>src</th><th>next</th><th>seq</th><th>exp</th></tr></thead>
+        <thead>
+          <tr><th>src</th><th>next</th><th>seq</th><th>exp</th></tr>
+        </thead>
         <tbody>
           {#each Object.entries(node.routes) as [src, r]}
             <tr>
               <td>{src}</td>
               <td>{r.next_hop}</td>
               <td>{r.seq}</td>
-              <td>{r.expires_at.toFixed(1)}</td>
+              <td>{Math.max(0, r.expires_at - sim.sim.t).toFixed(1)}s</td>
             </tr>
           {/each}
         </tbody>
       </table>
     {/if}
+
     <h3>Inbox</h3>
     {#if !(node.inbox?.length)}
-      <p class="empty">Empty</p>
+      <p class="empty">No deliveries yet</p>
     {:else}
       <ul>
         {#each node.inbox.slice(-8) as item}
@@ -47,92 +109,179 @@
         {/each}
       </ul>
     {/if}
+
     <div class="actions">
-      <button
-        type="button"
-        onclick={() =>
-          import('../api').then(({ api }) =>
-            api.join(node.id, sim.selectedGroup).then(() => api.network()).then((s) => sim.applySnapshot(s)),
-          )}
-      >
-        Join {sim.selectedGroup}
-      </button>
-      <button
-        type="button"
-        onclick={() =>
-          import('../api').then(({ api }) =>
-            api.leave(node.id, sim.selectedGroup).then(() => api.network()).then((s) => sim.applySnapshot(s)),
-          )}
-      >
-        Leave
-      </button>
+      <button type="button" class="primary" onclick={join}>Join {sim.selectedGroup}</button>
+      <button type="button" onclick={leave}>Leave</button>
     </div>
   {/if}
 </aside>
 
 <style>
   .insp {
-    padding: 1rem 1.1rem;
-    background: rgba(10, 14, 22, 0.95);
-    border-left: 1px solid rgba(148, 163, 184, 0.18);
+    padding: 1rem 1.05rem;
+    background: var(--panel);
+    border-left: 1px solid var(--line);
     overflow: auto;
     height: 100%;
   }
-  h2, h3 {
-    font-family: 'Syne', sans-serif;
-    font-weight: 600;
-    margin: 0 0 0.6rem;
-    color: #e8eef5;
-  }
-  h3 { margin-top: 1rem; font-size: 0.95rem; color: #8aa4b8; }
-  .id {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 1.2rem;
-    color: #93c5fd;
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
     margin-bottom: 0.75rem;
+  }
+  h2,
+  h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    margin: 0;
+    color: var(--ink);
+  }
+  h2 {
+    font-size: 1rem;
+  }
+  h3 {
+    margin: 1rem 0 0.45rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .id {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: var(--blue);
+  }
+  .roles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+  }
+  .tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid var(--line);
+    background: var(--panel-elev);
+  }
+  .tag[data-role='source'] {
+    background: rgba(29, 78, 216, 0.1);
+    border-color: rgba(29, 78, 216, 0.35);
+    color: var(--blue);
+  }
+  .tag[data-role='member'] {
+    background: rgba(15, 118, 110, 0.1);
+    border-color: rgba(15, 118, 110, 0.35);
+    color: var(--member);
+  }
+  .tag[data-role='FG'] {
+    background: rgba(180, 83, 9, 0.1);
+    border-color: rgba(180, 83, 9, 0.35);
+    color: var(--fg);
+  }
+  .tag.muted {
+    color: var(--muted);
   }
   dl {
     display: grid;
-    gap: 0.35rem;
+    gap: 0.4rem;
     margin: 0;
   }
   dl > div {
     display: grid;
-    grid-template-columns: 5.5rem 1fr;
+    grid-template-columns: 6.2rem 1fr;
     gap: 0.5rem;
-    font-size: 0.85rem;
+    font-size: 0.84rem;
+    align-items: center;
   }
-  dt { color: #8aa4b8; }
-  dd { margin: 0; color: #e8eef5; font-family: 'IBM Plex Mono', monospace; }
+  dt {
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  dd {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .bar {
+    display: inline-block;
+    width: 3rem;
+    height: 0.3rem;
+    background: var(--paper-2);
+    overflow: hidden;
+  }
+  .bar i {
+    display: block;
+    height: 100%;
+    background: var(--amber);
+  }
   table {
     width: 100%;
     border-collapse: collapse;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.75rem;
+    font-family: var(--mono);
+    font-size: 0.74rem;
   }
-  th, td {
+  th,
+  td {
     text-align: left;
-    padding: 0.25rem 0.35rem;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+    padding: 0.28rem 0.3rem;
+    border-bottom: 1px solid var(--line);
   }
-  th { color: #8aa4b8; font-weight: 500; }
-  ul { list-style: none; padding: 0; margin: 0; }
+  th {
+    color: var(--muted);
+    font-weight: 600;
+  }
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
   li {
     padding: 0.35rem 0;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
-    font-size: 0.85rem;
-    color: #d5dee8;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.84rem;
+    color: var(--ink-soft);
   }
-  .mono { font-family: 'IBM Plex Mono', monospace; color: #8aa4b8; margin-right: 0.35rem; }
-  .empty { color: #6b7c8f; font-size: 0.85rem; }
-  .actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+  .mono {
+    font-family: var(--mono);
+    color: var(--muted);
+    margin-right: 0.35rem;
+  }
+  .empty {
+    color: var(--muted);
+    font-size: 0.84rem;
+    margin: 0.25rem 0;
+  }
+  .actions {
+    display: flex;
+    gap: 0.45rem;
+    margin-top: 1rem;
+  }
   button {
-    font-family: 'IBM Plex Sans', sans-serif;
     font-size: 0.8rem;
-    padding: 0.35rem 0.7rem;
-    background: #152033;
-    color: #e8eef5;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    cursor: pointer;
+    font-weight: 600;
+    padding: 0.4rem 0.7rem;
+    background: var(--panel-elev);
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  button.primary {
+    background: var(--teal);
+    border-color: var(--teal);
+    color: #fff;
   }
 </style>
