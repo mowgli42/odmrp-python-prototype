@@ -92,7 +92,10 @@ class SimStore {
   }
 
   ingestEvents(events: TraceEvent[]) {
-    this.events = [...this.events, ...events].slice(-500)
+    const seen = new Set(this.events.map((e) => e.seq))
+    const fresh = events.filter((e) => !seen.has(e.seq))
+    if (!fresh.length) return
+    this.events = [...this.events, ...fresh].slice(-500)
     for (const e of events) {
       this.#lastSeq = Math.max(this.#lastSeq, e.seq)
       if (e.kind === 'tx' && e.packet && Array.isArray(e.neighbors)) {
