@@ -39,6 +39,8 @@ class SimStore {
   })
   nodes = $state<Record<string, NodeState>>({})
   events = $state<TraceEvent[]>([])
+  /** Bumps on every events mutation so Trace `$derived` always re-runs. */
+  eventsEpoch = $state(0)
   selected = $state<number | null>(null)
   selectedGroup = $state('demo')
   packets = $state<Array<{ id: number; from: number; to: number; kind: string; born: number }>>([])
@@ -53,6 +55,8 @@ class SimStore {
 
   #ws: WebSocket | null = null
   #lastSeq = 0
+  #wsGen = 0
+  #seenSeq = new Set<number>()
 
   get memberIds(): number[] {
     const g = this.selectedGroup
@@ -123,14 +127,27 @@ class SimStore {
     return this.packets.filter((p) => now - p.born < 900).length
   }
 
+  #clearTrace() {
+    this.events = []
+    this.eventsEpoch += 1
+    this.packets = []
+    this.report = null
+    this.drops = { duplicate: 0, not_fg: 0, other: 0 }
+    this.deliveries = 0
+    this.lastEvent = null
+    this.flashDrops = []
+    this.#seenSeq.clear()
+    this.#lastSeq = 0
+  }
+
   async bootstrap() {
     try {
       await api.loadScenario('basic-mesh')
       const snap = await api.network()
       this.applySnapshot(snap)
+      this.#clearTrace()
       // Replay the whole ring so the Trace panel shows mesh-formation events
       // that happened during scenario load (before the socket opened).
-      this.#lastSeq = 0
       this.connectWs()
     } catch (e) {
       this.error = String(e)
@@ -141,27 +158,39 @@ class SimStore {
     this.sim = snap.sim
     this.topology = snap.topology
     this.nodes = snap.nodes
-    this.#lastSeq = snap.last_seq ?? 0
   }
 
   connectWs() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
     const url = `${proto}://${location.host}/ws?after_seq=${this.#lastSeq}`
-    this.#ws?.close()
+    const gen = ++this.#wsGen
+    const prev = this.#ws
+    this.#ws = null
+    // Drop prior socket without triggering its reconnect timer.
+    if (prev) {
+      prev.onclose = null
+      prev.close()
+    }
     const ws = new WebSocket(url)
     this.#ws = ws
     ws.onopen = () => {
+      if (gen !== this.#wsGen) return
       this.connected = true
       this.error = null
     }
     ws.onclose = () => {
+      if (gen !== this.#wsGen) return
       this.connected = false
-      setTimeout(() => this.connectWs(), 1500)
+      setTimeout(() => {
+        if (gen === this.#wsGen) this.connectWs()
+      }, 1500)
     }
     ws.onerror = () => {
+      if (gen !== this.#wsGen) return
       this.error = 'WebSocket error'
     }
     ws.onmessage = (ev) => {
+      if (gen !== this.#wsGen) return
       const msg = JSON.parse(ev.data)
       if (msg.type === 'snapshot') {
         this.applySnapshot(msg)
@@ -176,8 +205,13 @@ class SimStore {
   }
 
   ingestEvents(events: TraceEvent[]) {
-    this.events = [...this.events, ...events].slice(-500)
-    for (const e of events) {
+    if (!events.length) return
+    const fresh = events.filter((e) => !this.#seenSeq.has(e.seq))
+    if (!fresh.length) return
+    for (const e of fresh) this.#seenSeq.add(e.seq)
+    this.events = [...this.events, ...fresh].slice(-500)
+    this.eventsEpoch += 1
+    for (const e of fresh) {
       this.#lastSeq = Math.max(this.#lastSeq, e.seq)
       this.lastEvent = e
       if (e.kind === 'tx' && e.packet && Array.isArray(e.neighbors)) {
@@ -232,13 +266,8 @@ class SimStore {
     await api.loadScenario('basic-mesh')
     const snap = await api.network()
     this.applySnapshot(snap)
-    this.events = []
-    this.packets = []
-    this.report = null
-    this.drops = { duplicate: 0, not_fg: 0, other: 0 }
-    this.deliveries = 0
-    this.lastEvent = null
-    this.flashDrops = []
+    this.#clearTrace()
+    this.connectWs()
   }
 
   async send(text: string) {
