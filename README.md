@@ -1,5 +1,7 @@
 # ODMRP Python Prototype
 
+![ODMRP mesh laboratory — network view, messaging, and live Trace timeline](docs/walkthrough/readme_hero.png)
+
 Python prototype of the On-Demand Multicast Routing Protocol (ODMRP) with FastAPI backend and Svelte visualization.
 
 The simulator, Python ODMRP reference, REST/WebSocket API, and Svelte UI are implemented under `backend/` and `frontend/`. Specs, architecture docs, and beads-tracked sequencing remain the source of truth for what was built and what is still roadmap.

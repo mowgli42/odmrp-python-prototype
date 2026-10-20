@@ -1,4 +1,6 @@
 <script lang="ts" module>
+  import type { TraceEvent } from '../stores/sim.svelte'
+
   export function summarize(e: { kind: string; [k: string]: unknown }): string {
     if (e.kind === 'tx') {
       const p = e.packet as { kind?: string; seq?: number } | undefined
@@ -12,18 +14,26 @@
     if (e.kind === 'sim') return String(e.op)
     return ''
   }
+
+  export function visibleTrace(
+    events: TraceEvent[],
+    filter: 'all' | 'tx' | 'state.fg' | 'deliver' | 'drop',
+  ): TraceEvent[] {
+    return events
+      .filter((e) => filter === 'all' || e.kind === filter || e.kind.startsWith(filter))
+      .slice(-80)
+      .reverse()
+  }
+
+  export function eventKey(e: TraceEvent): string {
+    return `${e.seq}:${e.kind}:${e.node}:${e.t}`
+  }
 </script>
 
 <script lang="ts">
   import { sim } from '../stores/sim.svelte'
 
   let filter = $state<'all' | 'tx' | 'state.fg' | 'deliver' | 'drop'>('all')
-  const recent = $derived(
-    [...sim.events]
-      .filter((e) => filter === 'all' || e.kind === filter || e.kind.startsWith(filter))
-      .slice(-80)
-      .reverse(),
-  )
 
   function selectFromEvent(e: { node: number }) {
     if (e.node >= 0) sim.select(e.node)
@@ -32,7 +42,7 @@
 
 <section class="trace">
   <div class="head">
-    <h2>Trace</h2>
+    <h2>Trace <span class="count mono">{sim.events.length}</span></h2>
     <div class="chips" role="tablist" aria-label="Filter events">
       {#each ['all', 'tx', 'state.fg', 'deliver', 'drop'] as f}
         <button
@@ -47,11 +57,11 @@
       {/each}
     </div>
   </div>
-  {#if recent.length === 0}
+  {#if sim.events.length === 0}
     <p class="empty">No events yet — press Run or Step.</p>
   {:else}
     <ol>
-      {#each recent as e (e.seq)}
+      {#each visibleTrace(sim.events, filter) as e (eventKey(e))}
         <li>
           <button type="button" class="row" onclick={() => selectFromEvent(e)}>
             <span class="t">{e.t.toFixed(3)}</span>
@@ -85,6 +95,12 @@
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--ink);
+  }
+  .count {
+    margin-left: 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--muted);
   }
   .chips {
     display: flex;

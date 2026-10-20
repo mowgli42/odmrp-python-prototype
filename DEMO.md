@@ -47,10 +47,41 @@ PYTHONPATH=. python3 -m odmrp_sim.cli basic-mesh --trace ../traces/basic-mesh.js
 3. Send another text from the messaging panel; delivery report lists receivers from the trace.
 4. **Reset scenario** reloads the fixture from a clean seed.
 
-## Screenshot placeholders
-- Network view with FG halos: _(capture after load)_
-- Node inspector routes table: _(capture node 1)_
-- Trace timeline after send: _(capture after messaging)_
+## Screenshots
+
+Network view after `basic-mesh` load (FG halos, status strip, Trace):
+
+![Loaded basic-mesh](docs/walkthrough/walkthrough_01_loaded_basic_mesh.png)
+
+Node inspector on forwarding-group node **1**:
+
+![Inspector node 1](docs/walkthrough/walkthrough_02_inspector_node1.png)
+
+After sending a text message:
+
+![After send](docs/walkthrough/walkthrough_03_after_send.png)
+
+Receiver **5** inbox:
+
+![Receiver inbox](docs/walkthrough/walkthrough_04_receiver_inbox.png)
+
+Trace panel filtered to `deliver`:
+
+![Trace deliver filter](docs/walkthrough/walkthrough_05_trace_panel.png)
+
+Trace close-up:
+
+![Trace close-up](docs/walkthrough/walkthrough_05b_trace_closeup.png)
+
+Messaging + Trace strip:
+
+![Messaging and Trace](docs/walkthrough/walkthrough_05c_messaging_and_trace.png)
+
+Regenerate captures (API on :8000, Vite on :5173):
+
+```bash
+cd frontend && node scripts/capture_ui_screenshots.mjs
+```
 
 ## Tests
 
