@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 from odmrp_sim.model.packets import GroupId, NodeId, Packet
 from odmrp_sim.model.params import ProtocolParams
@@ -30,16 +31,22 @@ class ExternalProcessNode:
     params: ProtocolParams = field(default_factory=ProtocolParams)
     pos: Position = field(default_factory=lambda: Position(0.0, 0.0))
     range: float = 130.0
+    # When set, every NDJSON request/reply is appended for file monitoring.
+    log_path: Path | None = None
+    env: dict[str, str] = field(default_factory=dict)
     _proc: subprocess.Popen[str] | None = field(default=None, repr=False)
     _next_id: int = 1
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     _cached_next_timer: float | None = None
+    _log: Any = field(default=None, repr=False)
 
     @classmethod
     def java(
         cls,
         jar: Path | str | None = None,
         java_bin: str | None = None,
+        *,
+        log_path: Path | str | None = None,
     ) -> ExternalProcessNode:
         jbin = java_bin or (
             DEFAULT_JAVA_BIN if Path(DEFAULT_JAVA_BIN).exists() else "java"
@@ -49,11 +56,44 @@ class ExternalProcessNode:
             raise FileNotFoundError(
                 f"Java node jar not found at {jpath}. Run java-node/build.sh first."
             )
-        return cls(command=[jbin, "-jar", str(jpath)])
+        return cls(
+            command=[jbin, "-jar", str(jpath)],
+            log_path=Path(log_path) if log_path else None,
+        )
+
+    @classmethod
+    def native(
+        cls,
+        command: Sequence[str] | None = None,
+        *,
+        log_path: Path | str | None = None,
+    ) -> ExternalProcessNode:
+        """Language-native child process with a dedicated monitor log."""
+        script = _REPO_ROOT / "scripts" / "native_odmrp_node.py"
+        cmd = list(command) if command else [sys.executable, str(script)]
+        path = Path(log_path) if log_path else None
+        return cls(command=cmd, log_path=path)
+
+    def _open_log(self) -> None:
+        if self.log_path is None or self._log is not None:
+            return
+        self.log_path.parent.mkdir(parents=True, exist_ok=True)
+        self._log = self.log_path.open("a", encoding="utf-8")
+
+    def _write_log(self, direction: str, line: str) -> None:
+        if self.log_path is None:
+            return
+        self._open_log()
+        assert self._log is not None
+        self._log.write(f"{direction} {line.rstrip()}\n")
+        self._log.flush()
 
     def _ensure(self) -> None:
         if self._proc is not None and self._proc.poll() is None:
             return
+        self._open_log()
+        child_env = os.environ.copy()
+        child_env.update(self.env)
         self._proc = subprocess.Popen(
             list(self.command),
             stdin=subprocess.PIPE,
@@ -61,7 +101,10 @@ class ExternalProcessNode:
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1,
+            env=child_env,
         )
+        if self.log_path is not None:
+            self._write_log("#", f"spawn {' '.join(self.command)} pid={self._proc.pid}")
 
     def _rpc(self, op: str, **fields) -> dict:
         with self._lock:
@@ -70,13 +113,17 @@ class ExternalProcessNode:
             req_id = self._next_id
             self._next_id += 1
             msg = {"op": op, "id": req_id, **fields}
-            self._proc.stdin.write(json.dumps(msg, separators=(",", ":")) + "\n")
+            line = json.dumps(msg, separators=(",", ":"))
+            self._write_log("→", line)
+            self._proc.stdin.write(line + "\n")
             self._proc.stdin.flush()
-            line = self._proc.stdout.readline()
-            if not line:
+            reply = self._proc.stdout.readline()
+            if not reply:
                 err = self._proc.stderr.read() if self._proc.stderr else ""
+                self._write_log("!", f"died on {op}: {err}")
                 raise RuntimeError(f"external node died on {op}: {err}")
-            resp = json.loads(line)
+            self._write_log("←", reply)
+            resp = json.loads(reply)
             if resp.get("id") != req_id:
                 raise RuntimeError(f"id mismatch: sent {req_id} got {resp.get('id')}")
             if not resp.get("ok", False):
@@ -146,6 +193,12 @@ class ExternalProcessNode:
 
     def close(self) -> None:
         if self._proc is None:
+            if self._log is not None:
+                try:
+                    self._log.close()
+                except Exception:
+                    pass
+                self._log = None
             return
         try:
             if self._proc.poll() is None:
@@ -161,6 +214,12 @@ class ExternalProcessNode:
             except Exception:
                 pass
         self._proc = None
+        if self._log is not None:
+            try:
+                self._log.close()
+            except Exception:
+                pass
+            self._log = None
 
     def __del__(self) -> None:
         try:

@@ -30,6 +30,7 @@
         <span><i class="src"></i> source</span>
         <span><i class="mem"></i> member</span>
         <span><i class="fg"></i> forwarding group</span>
+        <span><i class="native"></i> native process</span>
         <span><i class="mesh"></i> mesh link</span>
         <span><i class="drop"></i> drop</span>
       </div>
@@ -116,6 +117,12 @@
     background: var(--fg);
     border-radius: 50%;
     box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.2);
+  }
+  .legend .native {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px var(--teal);
+    border-radius: 50%;
+    border: 1px dashed var(--teal);
   }
   .legend .mesh {
     width: 0.95rem;

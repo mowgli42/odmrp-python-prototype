@@ -21,7 +21,7 @@ from odmrp_sim.sim.node_host import NodeHost
 from odmrp_sim.sim.rng import SeededRng, derive_seed
 from odmrp_sim.sim.scheduler import Event, Scheduler
 
-NodeImplName = Literal["python", "java", "external"]
+NodeImplName = Literal["python", "java", "external", "native"]
 
 
 class SimMode(str, Enum):
@@ -39,6 +39,9 @@ class SimulationEngine:
     # Default implementation for new nodes; per-node override via node_impls / add_node(impl=...).
     default_impl: NodeImplName = "python"
     node_impls: dict[NodeId, NodeImplName] = field(default_factory=dict)
+    # Per-node native/external launch config from scenario YAML.
+    node_commands: dict[NodeId, list[str]] = field(default_factory=dict)
+    node_logs: dict[NodeId, Path] = field(default_factory=dict)
     java_jar: Path | None = None
     java_bin: str | None = None
     external_command: Sequence[str] | None = None
@@ -78,6 +81,9 @@ class SimulationEngine:
         self.scheduler.reset()
         self.bus.reset()
         self.rng = SeededRng(self.seed)
+        self.node_impls.clear()
+        self.node_commands.clear()
+        self.node_logs.clear()
         self.medium = Medium(
             self.topology,
             self.scheduler,
@@ -98,14 +104,23 @@ class SimulationEngine:
         if self.node_factory is not None:
             return self.node_factory(node_id)
         name: NodeImplName = impl_name or self.node_impls.get(node_id, self.default_impl)
+        log_path = self.node_logs.get(node_id)
         if name == "python":
             return PythonODMRPNode()
         if name == "java":
-            return ExternalProcessNode.java(jar=self.java_jar, java_bin=self.java_bin)
+            return ExternalProcessNode.java(
+                jar=self.java_jar, java_bin=self.java_bin, log_path=log_path
+            )
+        if name == "native":
+            cmd = self.node_commands.get(node_id)
+            return ExternalProcessNode.native(command=cmd, log_path=log_path)
         if name == "external":
-            if not self.external_command:
-                raise ValueError("external_command required when impl=external")
-            return ExternalProcessNode(command=list(self.external_command))
+            cmd = self.node_commands.get(node_id) or (
+                list(self.external_command) if self.external_command else None
+            )
+            if not cmd:
+                raise ValueError("command required when impl=external")
+            return ExternalProcessNode(command=list(cmd), log_path=log_path)
         raise ValueError(f"unknown node impl: {name}")
 
     def add_node(
@@ -116,12 +131,24 @@ class SimulationEngine:
         node_id: NodeId | None = None,
         *,
         impl: NodeImplName | None = None,
+        command: Sequence[str] | None = None,
+        log: str | Path | None = None,
     ) -> NodeId:
         nid = self._next_id if node_id is None else node_id
         self._next_id = max(self._next_id, nid + 1)
         r = self.topology.default_range if range_ is None else range_
         self.topology.add(nid, x, y, r)
-        node_impl = self._make_impl(nid, impl)
+        resolved = impl or self.node_impls.get(nid, self.default_impl)
+        if command is not None:
+            self.node_commands[nid] = list(command)
+        if log is not None:
+            self.node_logs[nid] = Path(log)
+        elif resolved in ("native", "external", "java") and nid not in self.node_logs:
+            # Default monitor log for process-backed nodes.
+            self.node_logs[nid] = Path("traces") / f"native-{nid}.log"
+        if impl is not None:
+            self.node_impls[nid] = impl
+        node_impl = self._make_impl(nid, resolved)
         host = NodeHost(
             nid,
             node_impl,
@@ -131,8 +158,20 @@ class SimulationEngine:
             derive_seed(self.seed, "node", nid),
             Position(x, y),
             r,
+            impl_name=resolved,
+            log_path=self.node_logs.get(nid),
         )
         self.hosts[nid] = host
+        if host.log_path is not None:
+            self.bus.emit(
+                self.scheduler.now,
+                nid,
+                "native",
+                op="configured",
+                impl=resolved,
+                log=str(host.log_path),
+                command=list(self.node_commands.get(nid, [])),
+            )
         return nid
 
     def remove_node(self, node_id: NodeId) -> None:
@@ -167,6 +206,8 @@ class SimulationEngine:
 
     def run_until(self, until: float) -> int:
         # Keep advancing node timers + scheduled deliveries until `until`
+        if until <= self.scheduler.now + 1e-12:
+            return 0
         n = 0
         guard = 0
         while guard < 100_000:
@@ -204,6 +245,13 @@ class SimulationEngine:
         return n
 
     def snapshot(self) -> dict[str, Any]:
+        nodes: dict[str, Any] = {}
+        for i, h in self.hosts.items():
+            d = h.get_state().to_dict()
+            d["impl"] = h.impl_name
+            if h.log_path is not None:
+                d["log"] = str(h.log_path)
+            nodes[str(i)] = d
         return {
             "sim": {
                 "t": self.scheduler.now,
@@ -214,7 +262,7 @@ class SimulationEngine:
             },
             "params": self.params.to_dict(),
             "topology": self.topology.to_dict(),
-            "nodes": {str(i): h.get_state().to_dict() for i, h in self.hosts.items()},
+            "nodes": nodes,
             "last_seq": self.bus.last_seq,
         }
 

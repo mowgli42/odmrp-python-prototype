@@ -27,6 +27,8 @@ export type NodeState = {
     next_refresh_at?: number | null
     last_data_at?: number
   }>
+  impl?: string
+  log?: string
 }
 
 export type MeshHealth = 'idle' | 'forming' | 'established' | 'expiring'
@@ -52,6 +54,8 @@ class SimStore {
   deliveries = $state(0)
   lastEvent = $state<TraceEvent | null>(null)
   flashDrops = $state<Array<{ node: number; reason: string; born: number }>>([])
+  scenarioName = $state('dynamic-mesh')
+  scenarios = $state<Array<{ name: string; nodes: number; description: string; has_mobility: boolean; native_nodes: number }>>([])
 
   #ws: WebSocket | null = null
   #lastSeq = 0
@@ -142,16 +146,23 @@ class SimStore {
 
   async bootstrap() {
     try {
-      await api.loadScenario('basic-mesh')
-      const snap = await api.network()
-      this.applySnapshot(snap)
-      this.#clearTrace()
-      // Replay the whole ring so the Trace panel shows mesh-formation events
-      // that happened during scenario load (before the socket opened).
-      this.connectWs()
+      const listed = await api.scenarios()
+      this.scenarios = listed.scenarios
+      await this.loadScenario(this.scenarioName)
     } catch (e) {
       this.error = String(e)
     }
+  }
+
+  async loadScenario(name: string) {
+    this.scenarioName = name
+    await api.loadScenario(name)
+    const snap = await api.network()
+    this.applySnapshot(snap)
+    this.#clearTrace()
+    // Replay the whole ring so the Trace panel shows mesh-formation events
+    // that happened during scenario load (before the socket opened).
+    this.connectWs()
   }
 
   applySnapshot(snap: any) {
@@ -200,6 +211,10 @@ class SimStore {
         this.nodes = { ...this.nodes, [String(msg.id)]: msg.state }
       } else if (msg.type === 'sim') {
         this.sim = msg.sim
+      } else if (msg.type === 'topology') {
+        this.topology = msg.topology
+        this.nodes = msg.nodes
+        if (msg.sim) this.sim = msg.sim
       }
     }
   }
@@ -209,7 +224,7 @@ class SimStore {
     const fresh = events.filter((e) => !this.#seenSeq.has(e.seq))
     if (!fresh.length) return
     for (const e of fresh) this.#seenSeq.add(e.seq)
-    this.events = [...this.events, ...fresh].slice(-500)
+    this.events = [...this.events, ...fresh].slice(-1200)
     this.eventsEpoch += 1
     for (const e of fresh) {
       this.#lastSeq = Math.max(this.#lastSeq, e.seq)
@@ -236,13 +251,7 @@ class SimStore {
           { node: e.node, reason, born: performance.now() },
         ].slice(-24)
       }
-      if (e.kind === 'topology') {
-        api.network().then((snap) => {
-          this.topology = snap.topology
-          this.nodes = snap.nodes
-          this.sim = snap.sim
-        })
-      }
+      // topology frames arrive via WS `type: topology` (see connectWs)
     }
   }
 
@@ -263,15 +272,11 @@ class SimStore {
 
   async reset() {
     await api.reset()
-    await api.loadScenario('basic-mesh')
-    const snap = await api.network()
-    this.applySnapshot(snap)
-    this.#clearTrace()
-    this.connectWs()
+    await this.loadScenario(this.scenarioName)
   }
 
   async send(text: string) {
-    const source = 0
+    const source = this.sourceIds[0] ?? 0
     const res = await api.sendText(source, this.selectedGroup, text)
     this.lastMessageId = res.message_id
     this.report = await api.report(res.message_id)

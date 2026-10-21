@@ -50,6 +50,10 @@
   function inMesh(id: number) {
     return isSource(id) || isFg(id) || isMember(id)
   }
+  function isNative(id: number) {
+    const impl = sim.nodes[String(id)]?.impl
+    return impl === 'native' || impl === 'external' || impl === 'java'
+  }
 
   const meshLinks = $derived(
     sim.topology.links.filter(([a, b]) => inMesh(a) && inMesh(b)),
@@ -124,6 +128,7 @@
     {@const fg = isFg(n.id)}
     {@const mem = isMember(n.id)}
     {@const src = isSource(n.id)}
+    {@const native = isNative(n.id)}
     {@const sel = sim.selected === n.id}
     {@const op = fgOpacity(n.id)}
     {#if fg}
@@ -134,6 +139,7 @@
         class="node source"
         class:member={mem}
         class:fg
+        class:native
         class:selected={sel}
         x={x - 13}
         y={y - 13}
@@ -149,6 +155,7 @@
         class="node"
         class:fg
         class:member={mem}
+        class:native
         class:selected={sel}
         cx={x}
         cy={y}
@@ -162,6 +169,9 @@
     <text class="label" class:on-source={src} x={x} y={y + 4} text-anchor="middle">{n.id}</text>
     {#if fg}
       <text class="badge" x={x + 16} y={y - 14}>FG</text>
+    {/if}
+    {#if native}
+      <text class="badge native-badge" x={x + 16} y={y + (fg ? 0 : -14)}>NAT</text>
     {/if}
   {/each}
 
@@ -221,6 +231,9 @@
   .node.selected {
     filter: drop-shadow(0 0 0 2px rgba(21, 32, 43, 0.25));
   }
+  .node.native {
+    stroke-dasharray: 3 2;
+  }
   .fg-halo {
     fill: var(--amber);
     pointer-events: none;
@@ -241,6 +254,9 @@
     font-size: 9px;
     font-weight: 700;
     pointer-events: none;
+  }
+  .badge.native-badge {
+    fill: var(--teal);
   }
   .pkt {
     fill: var(--ink);

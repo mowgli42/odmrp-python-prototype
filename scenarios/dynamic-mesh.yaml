@@ -1,0 +1,58 @@
+name: dynamic-mesh
+description: 16-node grid with waypoint mobility and two native (process) nodes monitored via log files.
+seed: 42
+range: 130
+params:
+  route_refresh_interval: 3.0
+  fg_timeout: 9.0
+  route_timeout: 9.0
+  jq_jitter: 0.0
+  jr_delay: 0.0
+  hop_delay: 0.001
+nodes:
+  # 4×4 grid — richer route diversity than the 6-node ring
+  - { id: 0, x: 0, y: 0 }
+  - { id: 1, x: 120, y: 0 }
+  - { id: 2, x: 240, y: 0 }
+  - { id: 3, x: 360, y: 0 }
+  - { id: 4, x: 0, y: 120 }
+  - id: 5
+    x: 120
+    y: 120
+    impl: native
+    log: traces/native-5.log
+  - { id: 6, x: 240, y: 120 }
+  - { id: 7, x: 360, y: 120 }
+  - { id: 8, x: 0, y: 240 }
+  - { id: 9, x: 120, y: 240 }
+  - id: 10
+    x: 240
+    y: 240
+    impl: native
+    log: traces/native-10.log
+  - { id: 11, x: 360, y: 240 }
+  - { id: 12, x: 0, y: 360 }
+  - { id: 13, x: 120, y: 360 }
+  - { id: 14, x: 240, y: 360 }
+  - { id: 15, x: 360, y: 360 }
+mobility:
+  model: waypoint
+  nodes: [4, 7, 12, 14]
+  interval: 0.8
+  speed: 35
+  bounds: [0, 0, 360, 360]
+  seed: 42
+script:
+  - { at: 0.0, op: join, node: 3, group: demo }
+  - { at: 0.0, op: join, node: 12, group: demo }
+  - { at: 0.0, op: join, node: 15, group: demo }
+  - { at: 1.0, op: text, node: 0, group: demo, text: "ODMRP dynamic mesh" }
+  # Scripted corridor break / rebuild — proves FG soft-state under churn
+  - { at: 2.5, op: move, node: 1, x: 60, y: -40 }
+  - { at: 2.5, op: move, node: 2, x: 300, y: -40 }
+  - { at: 4.0, op: move, node: 1, x: 120, y: 0 }
+  - { at: 4.0, op: move, node: 2, x: 240, y: 0 }
+  - { at: 4.5, op: text, node: 0, group: demo, text: "after topology repair" }
+expect:
+  delivered_to_min: 2
+  native_nodes: [5, 10]

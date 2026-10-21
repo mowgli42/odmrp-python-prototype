@@ -8,7 +8,27 @@ from typing import Any
 import yaml
 
 from odmrp_sim.model.params import ProtocolParams
-from odmrp_sim.sim.engine import SimulationEngine
+from odmrp_sim.services.mobility import arm_waypoint_mobility
+from odmrp_sim.sim.engine import NodeImplName, SimulationEngine
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _resolve_command(raw: Any) -> list[str] | None:
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        return raw.split()
+    return [str(x) for x in raw]
+
+
+def _resolve_log(raw: Any, node_id: int) -> Path | None:
+    if raw is None:
+        return None
+    path = Path(str(raw))
+    if not path.is_absolute():
+        path = REPO_ROOT / path
+    return path
 
 
 def load_scenario(engine: SimulationEngine, path: Path | str, messaging=None) -> dict[str, Any]:
@@ -23,13 +43,19 @@ def load_scenario(engine: SimulationEngine, path: Path | str, messaging=None) ->
 
     for n in data.get("nodes", []):
         nid = int(n["id"])
-        impl = n.get("impl")
-        if impl is not None:
-            engine.add_node(
-                float(n["x"]), float(n["y"]), n.get("range"), node_id=nid, impl=impl
-            )
-        else:
-            engine.add_node(float(n["x"]), float(n["y"]), n.get("range"), node_id=nid)
+        impl_raw = n.get("impl")
+        impl: NodeImplName | None = str(impl_raw) if impl_raw else None  # type: ignore[assignment]
+        command = _resolve_command(n.get("command"))
+        log = _resolve_log(n.get("log"), nid)
+        engine.add_node(
+            float(n["x"]),
+            float(n["y"]),
+            n.get("range"),
+            node_id=nid,
+            impl=impl,
+            command=command,
+            log=log,
+        )
 
     # Schedule script ops by advancing time between them
     script = sorted(data.get("script", []), key=lambda s: float(s.get("at", 0)))
@@ -54,8 +80,44 @@ def load_scenario(engine: SimulationEngine, path: Path | str, messaging=None) ->
                 engine.originate(int(step["node"]), str(step["group"]), payload)
             else:
                 messaging.send_text(int(step["node"]), str(step["group"]), str(step["text"]))
+        elif op == "move":
+            engine.move_node(int(step["node"]), float(step["x"]), float(step["y"]))
+        elif op == "file":
+            # Reserved for future file-transfer demos; ignore safely for now.
+            continue
         else:
             raise ValueError(f"unknown script op: {op}")
 
+    mobility = data.get("mobility")
+    if mobility:
+        arm_waypoint_mobility(engine, mobility)
+
     engine.bus.emit(engine.scheduler.now, -1, "sim", op="load", seed=seed, scenario=engine.scenario)
     return data
+
+
+def list_scenarios(scenarios_dir: Path | str) -> list[dict[str, Any]]:
+    """Return metadata for each YAML scenario in the directory."""
+    root = Path(scenarios_dir)
+    out: list[dict[str, Any]] = []
+    if not root.is_dir():
+        return out
+    for path in sorted(root.glob("*.yaml")):
+        try:
+            data = yaml.safe_load(path.read_text()) or {}
+        except Exception:
+            data = {}
+        nodes = data.get("nodes") or []
+        out.append(
+            {
+                "name": data.get("name", path.stem),
+                "file": path.name,
+                "nodes": len(nodes),
+                "description": data.get("description", ""),
+                "has_mobility": bool(data.get("mobility")),
+                "native_nodes": sum(
+                    1 for n in nodes if str(n.get("impl", "python")) in ("native", "external", "java")
+                ),
+            }
+        )
+    return out

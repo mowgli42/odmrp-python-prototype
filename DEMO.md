@@ -28,11 +28,16 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 Open http://127.0.0.1:5173/
 
-The UI loads `scenarios/basic-mesh.yaml` on connect: source **0**, receivers **3** and **5**, ring topology, message already injected at t=1.0. After settle you should see:
+The UI loads `scenarios/dynamic-mesh.yaml` on connect (16-node grid, waypoint mobility, native process nodes **5** and **10**). Switch to `basic-mesh` from the Scenario dropdown for the classic 6-node ring.
 
-- Forwarding-group halo on nodes **1** and **3**
-- Inbox text `ODMRP works` on nodes **3** and **5**
-- Trace events for `tx` / `rx` / `state.fg` / `deliver`
+On **dynamic-mesh** after settle you should see:
+
+- A 4×4 grid with denser mesh links and FG/member roles on the path to receivers **3 / 12 / 15**
+- **NAT** badges on process-backed nodes **5** and **10** — select one to tail `traces/native-*.log`
+- Trace events for `tx` / `rx` / `state.fg` / `deliver` / `topology` as mobility and scripted moves run
+- Press **Run** to watch waypoint movers change adjacency live
+
+On **basic-mesh**: source **0**, receivers **3** and **5**, FG on **1** and **3**, inbox text `ODMRP works`.
 
 ## Headless scenario
 
@@ -42,10 +47,11 @@ PYTHONPATH=. python3 -m odmrp_sim.cli basic-mesh --trace ../traces/basic-mesh.js
 ```
 
 ## What to try in the UI
-1. Click node **1** — inspector shows route `0 → next 0` and FG `demo`.
-2. Click **Step 0.1s** or **Run** to watch soft-state clocks advance.
-3. Send another text from the messaging panel; delivery report lists receivers from the trace.
-4. **Reset scenario** reloads the fixture from a clean seed.
+1. On **dynamic-mesh**, click a **NAT** node — inspector shows `impl: native` and a live log tail of NDJSON IPC.
+2. Click **Run** — waypoint mobility moves nodes **4 / 7 / 12 / 14** and mesh links rewire.
+3. Switch Scenario to **basic-mesh** for the small ring; click node **1** for routes / FG.
+4. Send another text from Messaging; delivery report lists receivers from the trace.
+5. **Reset** reloads the currently selected scenario from a clean seed.
 
 ## Screenshots
 

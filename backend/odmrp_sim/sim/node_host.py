@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from odmrp_sim.model.packets import GroupId, NodeId, Packet, PacketKind
@@ -27,6 +28,9 @@ class NodeHost:
         rng_seed: int,
         pos: Position,
         range_: float,
+        *,
+        impl_name: str = "python",
+        log_path: Path | None = None,
     ) -> None:
         self.id = node_id
         self.impl = impl
@@ -35,6 +39,8 @@ class NodeHost:
         self.medium = medium
         self.pos = pos
         self.range = range_
+        self.impl_name = impl_name
+        self.log_path = log_path
         impl.configure(node_id, params, rng_seed)
         if isinstance(impl, (PythonODMRPNode, ExternalProcessNode)):
             impl.pos = pos
