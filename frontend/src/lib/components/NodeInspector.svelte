@@ -13,7 +13,38 @@
     if (node.sessions?.some((s) => s.group === sim.selectedGroup)) tags.push('source')
     if (node.members?.includes(sim.selectedGroup)) tags.push('member')
     if (node.fg?.includes(sim.selectedGroup) || fg) tags.push('FG')
+    if (node.impl && node.impl !== 'python') tags.push(node.impl)
     return tags
+  })
+  let logLines = $state<string[]>([])
+  let logPath = $state<string | null>(null)
+  let logBusy = $state(false)
+
+  $effect(() => {
+    const id = sim.selected
+    const hasLog = !!node?.log
+    if (id == null || !hasLog) {
+      logLines = []
+      logPath = null
+      return
+    }
+    let cancelled = false
+    const pull = async () => {
+      try {
+        const res = await api.nodeLog(id, 60)
+        if (cancelled) return
+        logPath = res.path
+        logLines = res.lines
+      } catch {
+        if (!cancelled) logLines = []
+      }
+    }
+    void pull()
+    const timer = setInterval(() => void pull(), 1500)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
   })
 
   async function join() {
@@ -25,6 +56,17 @@
     if (!node) return
     await api.leave(node.id, sim.selectedGroup)
     sim.applySnapshot(await api.network())
+  }
+  async function refreshLog() {
+    if (!node?.log) return
+    logBusy = true
+    try {
+      const res = await api.nodeLog(node.id, 80)
+      logPath = res.path
+      logLines = res.lines
+    } finally {
+      logBusy = false
+    }
   }
 </script>
 
@@ -50,6 +92,10 @@
     </div>
 
     <dl>
+      <div>
+        <dt>Impl</dt>
+        <dd class="mono">{node.impl ?? 'python'}</dd>
+      </div>
       <div>
         <dt>Position</dt>
         <dd>({node.pos.x.toFixed(0)}, {node.pos.y.toFixed(0)})</dd>
@@ -108,6 +154,15 @@
           </li>
         {/each}
       </ul>
+    {/if}
+
+    {#if node.log}
+      <h3>Native log</h3>
+      <p class="log-path mono" title={logPath ?? node.log}>{logPath ?? node.log}</p>
+      <pre class="log" aria-label="Native node log tail">{logLines.join('\n') || '(log empty — traffic will append NDJSON lines)'}</pre>
+      <button type="button" class="ghost" disabled={logBusy} onclick={refreshLog}>
+        {logBusy ? 'Refreshing…' : 'Refresh log'}
+      </button>
     {/if}
 
     <div class="actions">
@@ -186,8 +241,37 @@
     border-color: rgba(180, 83, 9, 0.35);
     color: var(--fg);
   }
+  .tag[data-role='native'],
+  .tag[data-role='external'],
+  .tag[data-role='java'] {
+    background: rgba(15, 118, 110, 0.12);
+    border-color: rgba(15, 118, 110, 0.4);
+    color: var(--teal);
+  }
   .tag.muted {
     color: var(--muted);
+  }
+  .log-path {
+    margin: 0 0 0.35rem;
+    font-size: 0.68rem;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .log {
+    margin: 0 0 0.45rem;
+    padding: 0.45rem 0.5rem;
+    max-height: 9rem;
+    overflow: auto;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    line-height: 1.35;
+    border: 1px solid var(--line);
+    white-space: pre-wrap;
+    word-break: break-all;
   }
   dl {
     display: grid;
@@ -283,5 +367,9 @@
     background: var(--teal);
     border-color: var(--teal);
     color: #fff;
+  }
+  button.ghost {
+    background: transparent;
+    margin-bottom: 0.35rem;
   }
 </style>

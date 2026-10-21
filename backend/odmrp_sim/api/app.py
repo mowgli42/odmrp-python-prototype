@@ -24,7 +24,7 @@ from odmrp_sim.api.schemas import (
 )
 from odmrp_sim.api.session import SCENARIOS, session
 from odmrp_sim.model.params import ProtocolParams
-from odmrp_sim.services.scenarios import load_scenario
+from odmrp_sim.services.scenarios import list_scenarios, load_scenario
 from odmrp_sim.sim.engine import SimMode
 
 VERSION = "0.1.0"
@@ -54,6 +54,14 @@ def _problem(status: int, title: str, detail: str = "") -> JSONResponse:
     )
 
 
+def _host_dict(host) -> dict[str, Any]:
+    data = host.get_state().to_dict()
+    data["impl"] = host.impl_name
+    if host.log_path is not None:
+        data["log"] = str(host.log_path)
+    return data
+
+
 @app.get("/health")
 @app.get("/api/health")
 def health() -> dict[str, Any]:
@@ -74,6 +82,11 @@ async def create_network(body: NetworkCreate) -> dict[str, Any]:
         session.engine.add_node(n.x, n.y, n.range, node_id=n.id)
     session.engine.bus.emit(0.0, -1, "sim", op="load", seed=body.seed, scenario=None)
     return session.engine.snapshot()
+
+
+@app.get("/api/scenarios")
+def get_scenarios() -> dict[str, Any]:
+    return {"scenarios": list_scenarios(SCENARIOS)}
 
 
 @app.post("/api/network/scenario")
@@ -120,7 +133,40 @@ def get_node(node_id: int) -> dict[str, Any]:
     host = session.engine.hosts.get(node_id)
     if host is None:
         raise HTTPException(404, "node not found")
-    return host.get_state().to_dict()
+    return _host_dict(host)
+
+
+@app.get("/api/nodes/{node_id}/log")
+def get_node_log(node_id: int, tail: int = 80) -> dict[str, Any]:
+    """Return the monitor log for a native/external process node."""
+    host = session.engine.hosts.get(node_id)
+    if host is None:
+        raise HTTPException(404, "node not found")
+    if host.log_path is None:
+        raise HTTPException(404, "node has no log file")
+    path = Path(host.log_path)
+    if not path.is_file():
+        return {
+            "node": node_id,
+            "path": str(path),
+            "impl": host.impl_name,
+            "lines": [],
+            "exists": False,
+        }
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        raise HTTPException(500, f"cannot read log: {exc}") from exc
+    lines = text.splitlines()
+    n = max(1, min(int(tail), 2000))
+    return {
+        "node": node_id,
+        "path": str(path),
+        "impl": host.impl_name,
+        "lines": lines[-n:],
+        "exists": True,
+        "total_lines": len(lines),
+    }
 
 
 @app.post("/api/nodes/{node_id}/groups")
@@ -249,10 +295,20 @@ async def websocket_endpoint(ws: WebSocket, after_seq: int = 0):
                 for nid in touched:
                     host = session.engine.hosts.get(nid)
                     if host:
-                        await ws.send_json({"type": "node", "id": nid, "state": host.get_state().to_dict()})
-                # sim frame
+                        await ws.send_json({"type": "node", "id": nid, "state": _host_dict(host)})
                 if any(e["kind"] == "sim" for e in events):
                     await ws.send_json({"type": "sim", "sim": session.engine.snapshot()["sim"]})
+                # Push topology after moves so the UI animates without an extra REST round-trip
+                if any(e["kind"] == "topology" for e in events):
+                    snap = session.engine.snapshot()
+                    await ws.send_json(
+                        {
+                            "type": "topology",
+                            "topology": snap["topology"],
+                            "nodes": snap["nodes"],
+                            "sim": snap["sim"],
+                        }
+                    )
             # Detect client disconnect via receive with timeout
             try:
                 await asyncio.wait_for(ws.receive_text(), timeout=0.001)

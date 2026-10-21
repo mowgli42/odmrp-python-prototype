@@ -19,6 +19,8 @@ cd frontend && npm install && npm run dev -- --host 127.0.0.1 --port 5173
 
 Open http://127.0.0.1:5173/ — see `DEMO.md` for the walkthrough.
 
+The UI defaults to the **`dynamic-mesh`** scenario (16-node grid, waypoint mobility, two `impl: native` process nodes with monitor logs under `traces/`). Switch back to `basic-mesh` from the Scenario control when you want the classic 6-node ring.
+
 ### Java reference node (differential testing)
 
 Requires JDK 17+. Build the NDJSON jar, then run the Python harness tests:

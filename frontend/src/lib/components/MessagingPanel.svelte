@@ -23,7 +23,9 @@
 
 <section class="msg">
   <h2>Messaging</h2>
-  <p class="help">Inject a text payload from source node 0 into the selected group.</p>
+  <p class="help">
+    Inject a text payload from the active source ({sim.sourceIds[0] ?? 0}) into the selected group.
+  </p>
   <div class="row">
     <label class="grow">
       Text

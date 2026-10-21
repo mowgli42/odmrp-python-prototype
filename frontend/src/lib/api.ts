@@ -10,10 +10,20 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
+export type ScenarioInfo = {
+  name: string
+  file: string
+  nodes: number
+  description: string
+  has_mobility: boolean
+  native_nodes: number
+}
+
 export const api = {
   health: () => req<{ t: number; mode: string; version: string }>('/api/health'),
   network: () => req<any>('/api/network'),
-  loadScenario: (name = 'basic-mesh') =>
+  scenarios: () => req<{ scenarios: ScenarioInfo[] }>('/api/scenarios'),
+  loadScenario: (name = 'dynamic-mesh') =>
     req<any>(`/api/network/scenario?name=${encodeURIComponent(name)}`, { method: 'POST' }),
   createNetwork: (body: unknown) =>
     req<any>('/api/network', {
@@ -50,6 +60,21 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ source, group, text }),
     }),
+  moveNode: (id: number, x: number, y: number) =>
+    req(`/api/nodes/${id}/position`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ x, y }),
+    }),
   node: (id: number) => req<any>(`/api/nodes/${id}`),
+  nodeLog: (id: number, tail = 80) =>
+    req<{
+      node: number
+      path: string
+      impl: string
+      lines: string[]
+      exists: boolean
+      total_lines?: number
+    }>(`/api/nodes/${id}/log?tail=${tail}`),
   report: (messageId: string) => req<any>(`/api/messages/${messageId}/report`),
 }

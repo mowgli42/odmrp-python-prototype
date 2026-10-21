@@ -21,9 +21,30 @@
     <button type="button" onclick={() => sim.step(0.1)} title="Advance 0.1 simulated seconds">
       Step 0.1s
     </button>
-    <button type="button" class="ghost" onclick={() => sim.reset()} title="Reload basic-mesh">
+    <button type="button" class="ghost" onclick={() => sim.reset()} title="Reload current scenario">
       Reset
     </button>
+    <label class="scenario">
+      <span>Scenario</span>
+      <select
+        aria-label="Scenario"
+        value={sim.scenarioName}
+        onchange={(e) => {
+          const name = (e.target as HTMLSelectElement).value
+          void sim.loadScenario(name)
+        }}
+      >
+        {#if sim.scenarios.length === 0}
+          <option value={sim.scenarioName}>{sim.scenarioName}</option>
+        {:else}
+          {#each sim.scenarios as s}
+            <option value={s.name}>
+              {s.name} ({s.nodes}n{s.has_mobility ? ', mobile' : ''}{s.native_nodes ? `, ${s.native_nodes} native` : ''})
+            </option>
+          {/each}
+        {/if}
+      </select>
+    </label>
     <label class="speed">
       <span>Speed</span>
       <input
@@ -48,7 +69,7 @@
   </div>
 
   <p class="hint">
-    Click a node to inspect · Join/Leave in the side panel · Send from Messaging below
+    Pick a scenario · Click a node to inspect · Native nodes expose a live log file
   </p>
 </header>
 
@@ -115,7 +136,8 @@
     background: transparent;
   }
   .speed,
-  .group {
+  .group,
+  .scenario {
     display: inline-flex;
     gap: 0.4rem;
     align-items: center;
@@ -128,13 +150,19 @@
     width: 6.5rem;
     accent-color: var(--teal);
   }
-  .group input {
+  .group input,
+  .scenario select {
     width: 5.5rem;
     padding: 0.3rem 0.45rem;
     border: 1px solid var(--line);
     background: var(--panel);
     color: var(--ink);
     font-size: 0.84rem;
+  }
+  .scenario select {
+    width: auto;
+    min-width: 11rem;
+    max-width: 16rem;
   }
   .mono {
     font-family: var(--mono);
