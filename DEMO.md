@@ -55,19 +55,21 @@ PYTHONPATH=. python3 -m odmrp_sim.cli basic-mesh --trace ../traces/basic-mesh.js
 
 ## Screenshots
 
-Network view after `basic-mesh` load (FG halos, status strip, Trace):
+`dynamic-mesh` overview (16 nodes, NAT badges, Trace):
 
-![Loaded basic-mesh](docs/walkthrough/walkthrough_01_loaded_basic_mesh.png)
+![Loaded dynamic-mesh](docs/walkthrough/walkthrough_01_loaded_basic_mesh.png)
 
-Node inspector on forwarding-group node **1**:
+Native node **5** inspector with live NDJSON log:
 
-![Inspector node 1](docs/walkthrough/walkthrough_02_inspector_node1.png)
+![Native inspector](docs/walkthrough/walkthrough_02_inspector_node1.png)
+
+![Native log close-up](docs/walkthrough/walkthrough_02b_native_log.png)
 
 After sending a text message:
 
 ![After send](docs/walkthrough/walkthrough_03_after_send.png)
 
-Receiver **5** inbox:
+Receiver **15** inbox:
 
 ![Receiver inbox](docs/walkthrough/walkthrough_04_receiver_inbox.png)
 
@@ -82,6 +84,10 @@ Trace close-up:
 Messaging + Trace strip:
 
 ![Messaging and Trace](docs/walkthrough/walkthrough_05c_messaging_and_trace.png)
+
+Classic `basic-mesh` ring:
+
+![basic-mesh](docs/walkthrough/walkthrough_06_basic_mesh.png)
 
 Regenerate captures (API on :8000, Vite on :5173):
 
