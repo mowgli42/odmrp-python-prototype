@@ -1,6 +1,6 @@
 # ODMRP Python Prototype
 
-![ODMRP mesh laboratory — network view, messaging, and live Trace timeline](docs/walkthrough/readme_hero.png)
+![ODMRP mesh laboratory — dynamic-mesh (16 nodes), native process nodes, live Trace](docs/walkthrough/readme_hero.png)
 
 Python prototype of the On-Demand Multicast Routing Protocol (ODMRP) with FastAPI backend and Svelte visualization.
 
@@ -17,9 +17,13 @@ PYTHONPATH=. python3 -m uvicorn odmrp_sim.api.app:app --host 127.0.0.1 --port 80
 cd frontend && npm install && npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-Open http://127.0.0.1:5173/ — see `DEMO.md` for the walkthrough.
+Open http://127.0.0.1:5173/ — see `DEMO.md` for the walkthrough and more screenshots.
 
-The UI defaults to the **`dynamic-mesh`** scenario (16-node grid, waypoint mobility, two `impl: native` process nodes with monitor logs under `traces/`). Switch back to `basic-mesh` from the Scenario control when you want the classic 6-node ring.
+The UI defaults to **`dynamic-mesh`**: a 16-node grid with waypoint mobility, scripted topology churn, and two `impl: native` process nodes (NAT badges) whose NDJSON IPC is tailed from `traces/native-*.log` in the inspector. Switch to `basic-mesh` from the Scenario control for the classic 6-node ring.
+
+Native node inspector (log monitor):
+
+![Native node log inspector](docs/walkthrough/walkthrough_02b_native_log.png)
 
 ### Java reference node (differential testing)
 
