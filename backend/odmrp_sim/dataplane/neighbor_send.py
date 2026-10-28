@@ -138,20 +138,53 @@ class NeighborSender:
 
         Returns the hop list that was used (empty if isolated).
         """
-        hops = self.current_hops(sender, now=now)
-        neighbors = [h.peer_id for h in hops]
-        self.bus.emit(
-            now,
+        return self._emit(sender, packet, now, hops=self.current_hops(sender, now=now))
+
+    def neighbor_send_to(
+        self,
+        sender: NodeId,
+        packet: Packet,
+        peer_ids: list[NodeId] | set[NodeId],
+        now: float,
+    ) -> list[UnicastHop]:
+        """Unicast to a subset of *currently active* tunnels (gateway dissemination).
+
+        Peers not in the active neighbor set are skipped. ODMRP control/data that
+        must flood all neighbors still use ``neighbor_send``.
+        """
+        want = {int(p) for p in peer_ids}
+        hops = [h for h in self.current_hops(sender, now=now) if h.peer_id in want]
+        return self._emit(
             sender,
-            "tx",
-            packet=packet.to_dict(),
-            neighbors=neighbors,
-            unicasts=[
-                {"peer_id": h.peer_id, "tunnel_endpoint": h.tunnel_endpoint}
-                for h in hops
-            ],
-            mode="unicast_over_neighbors",
+            packet,
+            now,
+            hops=hops,
+            mode="unicast_over_neighbors_filtered",
+            filter_peers=sorted(want),
         )
+
+    def _emit(
+        self,
+        sender: NodeId,
+        packet: Packet,
+        now: float,
+        *,
+        hops: list[UnicastHop],
+        mode: str = "unicast_over_neighbors",
+        filter_peers: list[NodeId] | None = None,
+    ) -> list[UnicastHop]:
+        neighbors = [h.peer_id for h in hops]
+        payload: dict = {
+            "packet": packet.to_dict(),
+            "neighbors": neighbors,
+            "unicasts": [
+                {"peer_id": h.peer_id, "tunnel_endpoint": h.tunnel_endpoint} for h in hops
+            ],
+            "mode": mode,
+        }
+        if filter_peers is not None:
+            payload["filter_peers"] = filter_peers
+        self.bus.emit(now, sender, "tx", **payload)
         for hop in hops:
             self._tx_counter += 1
             jitter = self.rng.uniform(

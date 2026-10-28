@@ -140,16 +140,89 @@ class DataPlanMessage:
 
 
 @dataclass
+class DisseminationRule:
+    """Gateway ingress/egress rule: (product_type, optional source) → destinations.
+
+    Evaluated when a product becomes available or connectivity changes — not a
+    per-packet recipient list.
+    """
+
+    product_type: str
+    destinations: list[NodeId] = field(default_factory=list)
+    source_node: NodeId | None = None  # None = any source
+    group: GroupId | None = None
+
+    def matches(self, product_type: str, source_node: NodeId | None = None) -> bool:
+        if self.product_type != product_type:
+            return False
+        if self.source_node is None:
+            return True
+        return source_node is not None and int(source_node) == int(self.source_node)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "product_type": self.product_type,
+            "source_node": self.source_node,
+            "destinations": list(self.destinations),
+            "group": self.group,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> DisseminationRule:
+        return cls(
+            product_type=str(d["product_type"]),
+            destinations=[int(x) for x in d.get("destinations", [])],
+            source_node=int(d["source_node"]) if d.get("source_node") is not None else None,
+            group=str(d["group"]) if d.get("group") is not None else None,
+        )
+
+
+@dataclass
 class DataPlan:
-    """OMS-aligned plan: short messages + file products for an overlay scenario."""
+    """Mission DataPlan: messaging/products plus gateway dissemination rules.
+
+    ``dissemination`` maps (product_type, optional source) → destination node IDs.
+    The gateway evaluates it when products become available or connectivity changes.
+    """
 
     name: str
     group: GroupId = "demo"
     address_book: str = ""  # fixture path or book name
     messages: list[DataPlanMessage] = field(default_factory=list)
     products: list[ProductMetadata] = field(default_factory=list)
+    dissemination: list[DisseminationRule] = field(default_factory=list)
     description: str = ""
     version: str = "1.0"
+
+    def destinations_for(
+        self, product_type: str, source_node: NodeId | None = None
+    ) -> list[NodeId]:
+        """Union of matching rule destinations (stable sorted)."""
+        dest: set[NodeId] = set()
+        for rule in self.dissemination:
+            if rule.matches(product_type, source_node):
+                dest.update(int(d) for d in rule.destinations)
+        return sorted(dest)
+
+    def prune_destinations(self, connected: set[NodeId] | list[NodeId]) -> list[dict[str, Any]]:
+        """Drop destinations not in ``connected``. Returns change records."""
+        allow = {int(n) for n in connected}
+        changes: list[dict[str, Any]] = []
+        for rule in self.dissemination:
+            before = list(rule.destinations)
+            after = [d for d in before if int(d) in allow]
+            if after != before:
+                removed = sorted(set(before) - set(after))
+                rule.destinations = after
+                changes.append(
+                    {
+                        "product_type": rule.product_type,
+                        "source_node": rule.source_node,
+                        "removed": removed,
+                        "destinations": list(after),
+                    }
+                )
+        return changes
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -160,10 +233,25 @@ class DataPlan:
             "address_book": self.address_book,
             "messages": [m.to_dict() for m in self.messages],
             "products": [p.to_dict() for p in self.products],
+            "dissemination": [r.to_dict() for r in self.dissemination],
         }
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> DataPlan:
+        rules = [DisseminationRule.from_dict(r) for r in d.get("dissemination", [])]
+        # Derive rules from intended_members on product messages when omitted.
+        if not rules:
+            for m in d.get("messages", []):
+                if m.get("kind") == "data_product" and m.get("intended_members"):
+                    prod = m.get("product") or {}
+                    rules.append(
+                        DisseminationRule(
+                            product_type=str(prod.get("product_type") or "file"),
+                            destinations=[int(x) for x in m["intended_members"]],
+                            source_node=int(m["source_node"]) if m.get("source_node") is not None else None,
+                            group=str(m.get("group") or d.get("group") or "demo"),
+                        )
+                    )
         return cls(
             name=str(d.get("name", "unnamed")),
             version=str(d.get("version", "1.0")),
@@ -172,4 +260,5 @@ class DataPlan:
             address_book=str(d.get("address_book", "")),
             messages=[DataPlanMessage.from_dict(m) for m in d.get("messages", [])],
             products=[ProductMetadata.from_dict(p) for p in d.get("products", [])],
+            dissemination=rules,
         )

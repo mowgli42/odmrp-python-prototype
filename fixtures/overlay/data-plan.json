@@ -4,6 +4,14 @@
   "description": "OMS-aligned plan: short chat over ODMRP data + staged file product via super-node 0.",
   "group": "demo",
   "address_book": "fixtures/overlay/address-book.json",
+  "dissemination": [
+    {
+      "product_type": "imagery",
+      "source_node": 0,
+      "destinations": [1, 2],
+      "group": "demo"
+    }
+  ],
   "products": [
     {
       "product_id": "prod-isr-001",

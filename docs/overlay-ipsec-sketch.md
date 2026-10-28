@@ -43,13 +43,24 @@ duplicate cache, FG-scoped pure DATA. Only the wire primitive is neighbor-send.
 Sparse by design: source 0 tunnels only to relays 1 and 2 (not a full mesh);
 far receiver 5 has no direct tunnel to 0.
 
-## OMS data plan
+## OMS data plan + gateway dissemination
 
 `fixtures/overlay/data-plan.json`:
 
 - `data_text` → ODMRP DATA (AppPayload text)
 - `data_product` → ProductMetadata + ProductLocation (uri, mime, expiration, staging_node, tunnel_endpoint)
+- `dissemination[]` → `(product_type, optional source_node) → destinations[]` (mission map)
 - endpoints resolved from the address book
+
+Gateway (super-node) path — local only:
+
+1. **DataPlanStore** (in-memory; replaceable) holds the active plan.
+2. On product available → evaluate destinations → emit `product_meta` + `product_loc` AppPayloads.
+3. TX via `NeighborSender.neighbor_send_to` (filtered unicast over active tunnels).
+4. Announcement packets use `ttl=1` so FG rebroadcast does not redistribute them.
+5. **ConnectedNodeMonitor** tracks gateway tunnels; on disconnect, prunes destinations and subsequent disseminations respect the new set.
+
+API: `GET/PUT /api/data-plan`, `GET /api/gateway`, `POST /api/gateway/tick`, `POST /api/gateway/products`.
 
 ## Super-node overlay
 

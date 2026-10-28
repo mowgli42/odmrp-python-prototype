@@ -97,3 +97,28 @@ Then overlay.super_nodes contains 0
 And overlay.logical_links is a non-empty list of undirected pairs
 And overlay.mode is "tunnel"
 ```
+
+### Requirement: Gateway DataPlan drives product dissemination
+The gateway (super-node) SHALL maintain an active DataPlan that maps `(product_type, optional source_node)` to destination node IDs. When a product becomes available, the gateway SHALL evaluate the plan, build OMS ProductMetadata and ProductLocation announcements, and transmit them via destination-filtered neighbor-send (`neighbor_send_to`) over currently active tunnels only (`destinations ∩ connected`). ODMRP Join Query / Join Reply / FG / duplicate-cache SHALL remain unchanged; announcement packets use ttl=1 so FG members do not rebroadcast them. Multi-hop group DATA continues to use the classic FG mesh.
+
+#### Scenario: DataPlan evaluation announces only to named destinations
+```gherkin
+Given the overlay-mesh scenario is loaded with a gateway DataPlan
+When product prod-isr-001 of type imagery becomes available on the gateway
+Then the gateway announces product_meta and product_loc
+And announcement unicasts go only to DataPlan destinations that are connected
+And no announcement unicast targets a node outside the destination set
+```
+
+### Requirement: Gateway monitor updates DataPlan on connectivity change
+A gateway-local process SHALL track currently connected tunnel peers, detect connect/disconnect, prune unreachable destinations from the active DataPlan on disconnect, and expose status (connected set, dissemination rules, recent monitor events) for the API/UI. Ordinary ODMRP nodes SHALL not require changes for this monitor.
+
+#### Scenario: Connectivity loss updates DataPlan destinations
+```gherkin
+Given the overlay-mesh scenario is loaded with a gateway DataPlan
+And the gateway DataPlan lists destinations 1 and 2 for imagery
+When tunnel peer 2 disconnects from the gateway
+And the gateway monitor ticks
+Then destination 2 is removed from the active DataPlan
+And a subsequent imagery product is announced only to destination 1
+```

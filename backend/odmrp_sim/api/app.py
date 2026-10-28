@@ -26,6 +26,7 @@ from odmrp_sim.api.session import SCENARIOS, session
 from odmrp_sim.model.address_book import AddressBook
 from odmrp_sim.model.params import ProtocolParams
 from odmrp_sim.model.super_node import SuperNodePolicy, SuperNodePush
+from odmrp_sim.model.data_plan import DataPlan, ProductMetadata
 from odmrp_sim.services.address_book_svc import apply_super_node_push, load_address_book
 from odmrp_sim.services.data_plan_svc import load_data_plan, resolve_endpoints
 from odmrp_sim.services.scenarios import list_scenarios, load_scenario
@@ -386,10 +387,19 @@ async def import_neighbors(body: dict[str, Any], replace: bool = True) -> dict[s
 
 @app.get("/api/data-plan")
 def get_data_plan() -> dict[str, Any]:
-    plan = session.engine.data_plan
+    plan = session.engine.gateway.store.get() or session.engine.data_plan
     if plan is None:
         raise HTTPException(404, "no data plan loaded")
     return plan.to_dict()
+
+
+@app.put("/api/data-plan")
+async def put_data_plan(body: dict[str, Any], reannounce: bool = False) -> dict[str, Any]:
+    """Replace the active gateway DataPlan (mission dissemination map)."""
+    plan = DataPlan.from_dict(body)
+    if session.engine.address_book is not None:
+        plan = resolve_endpoints(plan, session.engine.address_book)
+    return session.engine.gateway.replace_data_plan(plan, reannounce=reannounce)
 
 
 @app.post("/api/data-plan/load")
@@ -399,6 +409,31 @@ async def load_data_plan_path(path: str = "fixtures/overlay/data-plan.json") -> 
         plan = resolve_endpoints(plan, session.engine.address_book)
     session.engine.bind_data_plan(plan)
     return plan.to_dict()
+
+
+@app.get("/api/gateway")
+def get_gateway_status() -> dict[str, Any]:
+    """Observable gateway monitor + active DataPlan destinations."""
+    return session.engine.gateway.status()
+
+
+@app.post("/api/gateway/tick")
+def gateway_tick() -> dict[str, Any]:
+    """Run connected-node monitor once (detect connect/disconnect, prune plan)."""
+    return session.engine.gateway.tick()
+
+
+@app.post("/api/gateway/products")
+async def gateway_product_available(body: dict[str, Any]) -> dict[str, Any]:
+    """Stage a product on the gateway and disseminate per active DataPlan."""
+    product = ProductMetadata.from_dict(body)
+    result = session.engine.gateway.on_product_available(product)
+    # Deliver scheduled unicasts immediately for interactive API use
+    session.engine.run_until(session.engine.scheduler.now + 0.05)
+    return {
+        "result": result.to_dict(),
+        "gateway": session.engine.gateway.status(),
+    }
 
 
 @app.post("/api/super-node/push")

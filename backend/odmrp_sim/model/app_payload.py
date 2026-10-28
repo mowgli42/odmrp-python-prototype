@@ -6,7 +6,7 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
-AppKind = Literal["text", "chunk"]
+AppKind = Literal["text", "chunk", "product_meta", "product_loc"]
 
 
 @dataclass
@@ -20,6 +20,8 @@ class AppPayload:
     name: str | None = None
     sha256: str | None = None
     data: bytes | None = None  # chunk bytes (not JSON-encoded into body)
+    # OMS announcement envelope (JSON object as dict / string body fallback)
+    product: dict[str, Any] | None = None
 
     def encode(self) -> bytes:
         meta = {
@@ -31,6 +33,7 @@ class AppPayload:
             "total": self.total,
             "name": self.name,
             "sha256": self.sha256,
+            "product": self.product,
         }
         header = json.dumps(meta, separators=(",", ":")).encode("utf-8")
         if self.kind == "chunk" and self.data is not None:
@@ -56,6 +59,7 @@ class AppPayload:
                     name=meta.get("name"),
                     sha256=meta.get("sha256"),
                     data=data if meta.get("kind") == "chunk" else None,
+                    product=meta.get("product"),
                 )
         meta = json.loads(raw.decode("utf-8"))
         return cls(
@@ -67,7 +71,9 @@ class AppPayload:
             total=meta.get("total"),
             name=meta.get("name"),
             sha256=meta.get("sha256"),
+            product=meta.get("product"),
         )
+
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
