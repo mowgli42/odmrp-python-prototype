@@ -1,0 +1,204 @@
+{
+  "name": "overlay-demo",
+  "version": "1.0",
+  "description": "IPsec tunnel overlay address book — no native IPv4 multicast. Super node 0 stages products and pushes neighbor recommendations.",
+  "nodes": [
+    {
+      "node_id": 0,
+      "callsign": "GND-SUPER",
+      "name": "Ground super-node",
+      "platform": "site",
+      "tunnel_endpoint": "ipsec://10.8.0.1:500",
+      "capabilities": {
+        "is_super_node": true,
+        "can_stage_products": true,
+        "has_satcom": true,
+        "max_tunnels": 16,
+        "tags": ["ground", "staging"]
+      },
+      "neighbors": [
+        {
+          "peer_id": 1,
+          "tunnel_endpoint": "ipsec://10.8.0.2:500",
+          "status": "up",
+          "priority": 10,
+          "reason": "configured"
+        },
+        {
+          "peer_id": 2,
+          "tunnel_endpoint": "ipsec://10.8.0.3:500",
+          "status": "up",
+          "priority": 20,
+          "reason": "configured"
+        }
+      ],
+      "groups": ["demo"],
+      "position": { "x": 100, "y": 200 },
+      "status": "active",
+      "addressbook_ref": "c-gnd-super"
+    },
+    {
+      "node_id": 1,
+      "callsign": "RELAY-A",
+      "name": "Air relay A",
+      "platform": "aircraft",
+      "tunnel_endpoint": "ipsec://10.8.0.2:500",
+      "capabilities": {
+        "is_super_node": false,
+        "has_los_radio": true,
+        "max_tunnels": 6,
+        "tags": ["relay"]
+      },
+      "neighbors": [
+        {
+          "peer_id": 0,
+          "tunnel_endpoint": "ipsec://10.8.0.1:500",
+          "status": "up",
+          "priority": 10,
+          "reason": "configured"
+        },
+        {
+          "peer_id": 3,
+          "tunnel_endpoint": "ipsec://10.8.0.4:500",
+          "status": "up",
+          "priority": 30,
+          "reason": "configured"
+        },
+        {
+          "peer_id": 4,
+          "tunnel_endpoint": "ipsec://10.8.0.5:500",
+          "status": "up",
+          "priority": 40,
+          "reason": "discovered"
+        },
+        {
+          "peer_id": 5,
+          "tunnel_endpoint": "ipsec://10.8.0.6:500",
+          "status": "up",
+          "priority": 50,
+          "reason": "discovered"
+        }
+      ],
+      "groups": [],
+      "position": { "x": 200, "y": 120 },
+      "status": "active"
+    },
+    {
+      "node_id": 2,
+      "callsign": "RELAY-B",
+      "name": "Air relay B",
+      "platform": "aircraft",
+      "tunnel_endpoint": "ipsec://10.8.0.3:500",
+      "capabilities": {
+        "has_los_radio": true,
+        "max_tunnels": 6,
+        "tags": ["relay"]
+      },
+      "neighbors": [
+        {
+          "peer_id": 0,
+          "tunnel_endpoint": "ipsec://10.8.0.1:500",
+          "status": "up",
+          "priority": 10,
+          "reason": "configured"
+        },
+        {
+          "peer_id": 3,
+          "tunnel_endpoint": "ipsec://10.8.0.4:500",
+          "status": "up",
+          "priority": 30,
+          "reason": "configured"
+        }
+      ],
+      "position": { "x": 200, "y": 280 },
+      "status": "active"
+    },
+    {
+      "node_id": 3,
+      "callsign": "RCV-EAST",
+      "name": "East receiver",
+      "platform": "mobile",
+      "tunnel_endpoint": "ipsec://10.8.0.4:500",
+      "capabilities": { "max_tunnels": 4, "tags": ["member"] },
+      "neighbors": [
+        {
+          "peer_id": 1,
+          "tunnel_endpoint": "ipsec://10.8.0.2:500",
+          "status": "up",
+          "priority": 20,
+          "reason": "configured"
+        },
+        {
+          "peer_id": 2,
+          "tunnel_endpoint": "ipsec://10.8.0.3:500",
+          "status": "up",
+          "priority": 30,
+          "reason": "configured"
+        },
+        {
+          "peer_id": 5,
+          "tunnel_endpoint": "ipsec://10.8.0.6:500",
+          "status": "up",
+          "priority": 40,
+          "reason": "discovered"
+        }
+      ],
+      "groups": ["demo"],
+      "position": { "x": 300, "y": 120 },
+      "status": "active"
+    },
+    {
+      "node_id": 4,
+      "callsign": "EDGE-S",
+      "name": "South edge",
+      "platform": "mobile",
+      "tunnel_endpoint": "ipsec://10.8.0.5:500",
+      "capabilities": { "max_tunnels": 3 },
+      "neighbors": [
+        {
+          "peer_id": 1,
+          "tunnel_endpoint": "ipsec://10.8.0.2:500",
+          "status": "up",
+          "priority": 20,
+          "reason": "configured"
+        },
+        {
+          "peer_id": 5,
+          "tunnel_endpoint": "ipsec://10.8.0.6:500",
+          "status": "up",
+          "priority": 30,
+          "reason": "configured"
+        }
+      ],
+      "position": { "x": 300, "y": 280 },
+      "status": "active"
+    },
+    {
+      "node_id": 5,
+      "callsign": "RCV-FAR",
+      "name": "Far receiver",
+      "platform": "mobile",
+      "tunnel_endpoint": "ipsec://10.8.0.6:500",
+      "capabilities": { "max_tunnels": 4, "tags": ["member"] },
+      "neighbors": [
+        {
+          "peer_id": 3,
+          "tunnel_endpoint": "ipsec://10.8.0.4:500",
+          "status": "up",
+          "priority": 20,
+          "reason": "configured"
+        },
+        {
+          "peer_id": 4,
+          "tunnel_endpoint": "ipsec://10.8.0.5:500",
+          "status": "up",
+          "priority": 30,
+          "reason": "configured"
+        }
+      ],
+      "groups": ["demo"],
+      "position": { "x": 400, "y": 200 },
+      "status": "active"
+    }
+  ]
+}

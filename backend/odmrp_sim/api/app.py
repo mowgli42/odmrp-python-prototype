@@ -23,11 +23,16 @@ from odmrp_sim.api.schemas import (
     StepBody,
 )
 from odmrp_sim.api.session import SCENARIOS, session
+from odmrp_sim.model.address_book import AddressBook
 from odmrp_sim.model.params import ProtocolParams
+from odmrp_sim.model.super_node import SuperNodePolicy, SuperNodePush
+from odmrp_sim.services.address_book_svc import apply_super_node_push, load_address_book
+from odmrp_sim.services.data_plan_svc import load_data_plan, resolve_endpoints
 from odmrp_sim.services.scenarios import list_scenarios, load_scenario
 from odmrp_sim.sim.engine import SimMode
 
 VERSION = "0.1.0"
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 @asynccontextmanager
@@ -307,8 +312,12 @@ async def websocket_endpoint(ws: WebSocket, after_seq: int = 0):
                             "topology": snap["topology"],
                             "nodes": snap["nodes"],
                             "sim": snap["sim"],
+                            "overlay": snap.get("overlay"),
                         }
                     )
+                if any(e["kind"] == "overlay" for e in events):
+                    snap = session.engine.snapshot()
+                    await ws.send_json({"type": "overlay", "overlay": snap.get("overlay")})
             # Detect client disconnect via receive with timeout
             try:
                 await asyncio.wait_for(ws.receive_text(), timeout=0.001)
@@ -320,6 +329,101 @@ async def websocket_endpoint(ws: WebSocket, after_seq: int = 0):
         pass
     finally:
         session.ws_clients.discard(ws)
+
+
+@app.get("/api/overlay")
+def get_overlay() -> dict[str, Any]:
+    snap = session.engine.snapshot()
+    return snap.get("overlay") or {"mode": session.engine.overlay_mode}
+
+
+@app.get("/api/address-book")
+def get_address_book() -> dict[str, Any]:
+    book = session.engine.address_book
+    if book is None:
+        raise HTTPException(404, "no address book loaded")
+    return book.to_dict()
+
+
+@app.put("/api/address-book")
+async def put_address_book(body: dict[str, Any]) -> dict[str, Any]:
+    await session.pause()
+    book = AddressBook.from_dict(body)
+    mode = body.get("overlay_mode") or session.engine.overlay_mode
+    session.engine.bind_address_book(book, mode=mode)
+    return book.to_dict()
+
+
+@app.post("/api/address-book/load")
+async def load_address_book_path(path: str = "fixtures/overlay/address-book.json", mode: str = "hybrid") -> dict[str, Any]:
+    await session.pause()
+    book = load_address_book(path)
+    session.engine.bind_address_book(book, mode=mode)  # type: ignore[arg-type]
+    return book.to_dict()
+
+
+@app.get("/api/address-book/export/neighbors")
+def export_neighbors() -> dict[str, Any]:
+    book = session.engine.address_book
+    if book is None:
+        raise HTTPException(404, "no address book loaded")
+    return book.export_neighbors()
+
+
+@app.post("/api/address-book/import/neighbors")
+async def import_neighbors(body: dict[str, Any], replace: bool = True) -> dict[str, Any]:
+    book = session.engine.address_book
+    if book is None:
+        book = AddressBook(name="imported")
+        session.engine.address_book = book
+    n = book.import_neighbors(body, replace=replace)
+    session.engine._rebind_neighbors()
+    session.engine.bus.emit(
+        session.engine.scheduler.now, -1, "overlay", op="import_neighbors", count=n
+    )
+    return {"imported": n, "book": book.to_dict()}
+
+
+@app.get("/api/data-plan")
+def get_data_plan() -> dict[str, Any]:
+    plan = session.engine.data_plan
+    if plan is None:
+        raise HTTPException(404, "no data plan loaded")
+    return plan.to_dict()
+
+
+@app.post("/api/data-plan/load")
+async def load_data_plan_path(path: str = "fixtures/overlay/data-plan.json") -> dict[str, Any]:
+    plan = load_data_plan(path)
+    if session.engine.address_book is not None:
+        plan = resolve_endpoints(plan, session.engine.address_book)
+    session.engine.bind_data_plan(plan)
+    return plan.to_dict()
+
+
+@app.post("/api/super-node/push")
+async def super_node_push(body: dict[str, Any]) -> dict[str, Any]:
+    book = session.engine.address_book
+    if book is None:
+        raise HTTPException(404, "no address book loaded")
+    push = SuperNodePush.from_dict(body)
+    summary = apply_super_node_push(book, push, now=session.engine.scheduler.now)
+    session.engine.super_node_policy = push.policy
+    session.engine._rebind_neighbors()
+    session.engine.bus.emit(
+        session.engine.scheduler.now,
+        push.from_node,
+        "overlay",
+        op="super_node_push",
+        **summary,
+    )
+    return {"summary": summary, "overlay": session.engine.snapshot().get("overlay")}
+
+
+@app.put("/api/super-node/policy")
+def put_super_node_policy(body: dict[str, Any]) -> dict[str, Any]:
+    session.engine.super_node_policy = SuperNodePolicy.from_dict(body)
+    return session.engine.super_node_policy.to_dict()
 
 
 def main() -> None:

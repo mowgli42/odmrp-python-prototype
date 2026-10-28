@@ -55,7 +55,26 @@ class SimStore {
   lastEvent = $state<TraceEvent | null>(null)
   flashDrops = $state<Array<{ node: number; reason: string; born: number }>>([])
   scenarioName = $state('dynamic-mesh')
-  scenarios = $state<Array<{ name: string; nodes: number; description: string; has_mobility: boolean; native_nodes: number }>>([])
+  scenarios = $state<
+    Array<{
+      name: string
+      nodes: number
+      description: string
+      has_mobility: boolean
+      has_overlay?: boolean
+      native_nodes: number
+    }>
+  >([])
+  overlay = $state<{
+    mode?: string
+    super_nodes?: number[]
+    logical_links?: number[][]
+    address_book?: any
+    data_plan?: { name?: string; messages?: number; products?: number }
+    policy?: any
+  }>({})
+  showLogicalLinks = $state(true)
+  flashRecs = $state<Array<{ from: number; to: number; born: number }>>([])
 
   #ws: WebSocket | null = null
   #lastSeq = 0
@@ -169,6 +188,15 @@ class SimStore {
     this.sim = snap.sim
     this.topology = snap.topology
     this.nodes = snap.nodes
+    if (snap.overlay) this.overlay = snap.overlay
+  }
+
+  get superNodeIds(): number[] {
+    return [...(this.overlay.super_nodes || [])].sort((a, b) => a - b)
+  }
+
+  get logicalLinks(): number[][] {
+    return this.overlay.logical_links || []
   }
 
   connectWs() {
@@ -215,6 +243,9 @@ class SimStore {
         this.topology = msg.topology
         this.nodes = msg.nodes
         if (msg.sim) this.sim = msg.sim
+        if (msg.overlay) this.overlay = msg.overlay
+      } else if (msg.type === 'overlay') {
+        if (msg.overlay) this.overlay = msg.overlay
       }
     }
   }
@@ -240,6 +271,18 @@ class SimStore {
       }
       if (e.kind === 'deliver') {
         this.deliveries += 1
+      }
+      if (e.kind === 'overlay' && e.op === 'super_node_push') {
+        const from = e.node
+        const links = this.logicalLinks
+        for (const [a, b] of links) {
+          if (a === from || b === from) {
+            this.flashRecs = [
+              ...this.flashRecs,
+              { from, to: a === from ? b : a, born: performance.now() },
+            ].slice(-40)
+          }
+        }
       }
       if (e.kind === 'drop') {
         const reason = String(e.reason ?? 'other')

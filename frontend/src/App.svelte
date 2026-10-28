@@ -31,6 +31,8 @@
         <span><i class="mem"></i> member</span>
         <span><i class="fg"></i> forwarding group</span>
         <span><i class="native"></i> native process</span>
+        <span><i class="super"></i> super node</span>
+        <span><i class="tunnel"></i> tunnel peer</span>
         <span><i class="mesh"></i> mesh link</span>
         <span><i class="drop"></i> drop</span>
       </div>
@@ -123,6 +125,18 @@
     box-shadow: inset 0 0 0 2px var(--teal);
     border-radius: 50%;
     border: 1px dashed var(--teal);
+  }
+  .legend .super {
+    background: transparent;
+    border: 1.5px dashed var(--teal);
+    border-radius: 50%;
+  }
+  .legend .tunnel {
+    width: 0.95rem;
+    height: 0;
+    border-top: 2px dashed var(--teal);
+    background: transparent;
+    vertical-align: 4px;
   }
   .legend .mesh {
     width: 0.95rem;

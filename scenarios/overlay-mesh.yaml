@@ -1,0 +1,30 @@
+name: overlay-mesh
+description: IPsec tunnel overlay — logical neighbors from address book, super-node 0, OMS data plan.
+seed: 42
+range: 130
+overlay:
+  mode: tunnel
+  address_book: fixtures/overlay/address-book.json
+  data_plan: fixtures/overlay/data-plan.json
+  super_node_push: fixtures/overlay/super-node-push.json
+params:
+  route_refresh_interval: 3.0
+  fg_timeout: 9.0
+  route_timeout: 9.0
+  jq_jitter: 0.0
+  jr_delay: 0.0
+  hop_delay: 0.001
+nodes:
+  - { id: 0, x: 100, y: 200, callsign: GND-SUPER }
+  - { id: 1, x: 200, y: 120, callsign: RELAY-A }
+  - { id: 2, x: 200, y: 280, callsign: RELAY-B }
+  - { id: 3, x: 300, y: 120, callsign: RCV-EAST }
+  - { id: 4, x: 300, y: 280, callsign: EDGE-S }
+  - { id: 5, x: 400, y: 200, callsign: RCV-FAR }
+script:
+  - { at: 0.0, op: join, node: 3, group: demo }
+  - { at: 0.0, op: join, node: 5, group: demo }
+  - { at: 1.0, op: text, node: 0, group: demo, text: "ODMRP overlay hello — short message over FG mesh" }
+expect:
+  delivered_to: [3, 5]
+  super_nodes: [0]

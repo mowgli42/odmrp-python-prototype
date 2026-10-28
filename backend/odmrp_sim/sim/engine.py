@@ -8,10 +8,18 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
 
+from odmrp_sim.dataplane.neighbor_send import (
+    AddressBookNeighborProvider,
+    HybridNeighborProvider,
+    TopologyNeighborProvider,
+)
 from odmrp_sim.events.bus import EventBus
+from odmrp_sim.model.address_book import AddressBook
+from odmrp_sim.model.data_plan import DataPlan
 from odmrp_sim.model.packets import GroupId, NodeId, reset_packet_ids
 from odmrp_sim.model.params import ProtocolParams
 from odmrp_sim.model.state import Position
+from odmrp_sim.model.super_node import SuperNodePolicy
 from odmrp_sim.model.topology import Topology
 from odmrp_sim.protocol.external_node import ExternalProcessNode
 from odmrp_sim.protocol.interface import ODMRPNode
@@ -22,6 +30,7 @@ from odmrp_sim.sim.rng import SeededRng, derive_seed
 from odmrp_sim.sim.scheduler import Event, Scheduler
 
 NodeImplName = Literal["python", "java", "external", "native"]
+OverlayMode = Literal["radio", "tunnel", "hybrid"]
 
 
 class SimMode(str, Enum):
@@ -46,6 +55,10 @@ class SimulationEngine:
     java_bin: str | None = None
     external_command: Sequence[str] | None = None
     node_factory: Callable[[NodeId], ODMRPNode] | None = None
+    overlay_mode: OverlayMode = "hybrid"
+    address_book: AddressBook | None = None
+    data_plan: DataPlan | None = None
+    super_node_policy: SuperNodePolicy = field(default_factory=SuperNodePolicy)
 
     def __post_init__(self) -> None:
         self.topology = Topology(default_range=130.0)
@@ -63,6 +76,7 @@ class SimulationEngine:
             on_deliver=self._on_deliver,
         )
         self.topology.on_change(self._on_topo)
+        self._rebind_neighbors()
 
     def reset(self, *, seed: int | None = None, params: ProtocolParams | None = None) -> None:
         if seed is not None:
@@ -84,6 +98,8 @@ class SimulationEngine:
         self.node_impls.clear()
         self.node_commands.clear()
         self.node_logs.clear()
+        self.address_book = None
+        self.data_plan = None
         self.medium = Medium(
             self.topology,
             self.scheduler,
@@ -93,9 +109,47 @@ class SimulationEngine:
             on_deliver=self._on_deliver,
         )
         self.topology.on_change(self._on_topo)
+        self._rebind_neighbors()
         self._next_id = 0
         reset_packet_ids()
         self.bus.emit(0.0, -1, "sim", op="reset", seed=self.seed)
+
+    def _rebind_neighbors(self) -> None:
+        if self.overlay_mode == "tunnel" and self.address_book is not None:
+            self.medium.set_neighbor_provider(AddressBookNeighborProvider(self.address_book))
+        elif self.overlay_mode == "hybrid" and self.address_book is not None:
+            self.medium.set_neighbor_provider(
+                HybridNeighborProvider(self.topology, self.address_book)
+            )
+        else:
+            self.medium.set_neighbor_provider(TopologyNeighborProvider(self.topology))
+
+    def bind_address_book(self, book: AddressBook, *, mode: OverlayMode | None = None) -> None:
+        self.address_book = book
+        if mode is not None:
+            self.overlay_mode = mode
+        self._rebind_neighbors()
+        self.bus.emit(
+            self.scheduler.now,
+            -1,
+            "overlay",
+            op="address_book",
+            name=book.name,
+            nodes=len(book.nodes),
+            mode=self.overlay_mode,
+        )
+
+    def bind_data_plan(self, plan: DataPlan) -> None:
+        self.data_plan = plan
+        self.bus.emit(
+            self.scheduler.now,
+            -1,
+            "overlay",
+            op="data_plan",
+            name=plan.name,
+            messages=len(plan.messages),
+            products=len(plan.products),
+        )
 
     def set_node_impls(self, mapping: Mapping[NodeId, NodeImplName]) -> None:
         self.node_impls = dict(mapping)
@@ -252,6 +306,21 @@ class SimulationEngine:
             if h.log_path is not None:
                 d["log"] = str(h.log_path)
             nodes[str(i)] = d
+        overlay: dict[str, Any] = {
+            "mode": self.overlay_mode,
+            "policy": self.super_node_policy.to_dict(),
+        }
+        if self.address_book is not None:
+            overlay["address_book"] = self.address_book.to_dict()
+            overlay["super_nodes"] = [e.node_id for e in self.address_book.super_nodes()]
+            overlay["logical_links"] = self.address_book.logical_links(self.scheduler.now)
+        if self.data_plan is not None:
+            overlay["data_plan"] = {
+                "name": self.data_plan.name,
+                "group": self.data_plan.group,
+                "messages": len(self.data_plan.messages),
+                "products": len(self.data_plan.products),
+            }
         return {
             "sim": {
                 "t": self.scheduler.now,
@@ -263,6 +332,7 @@ class SimulationEngine:
             "params": self.params.to_dict(),
             "topology": self.topology.to_dict(),
             "nodes": nodes,
+            "overlay": overlay,
             "last_seq": self.bus.last_seq,
         }
 

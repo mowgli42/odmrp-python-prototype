@@ -39,6 +39,12 @@ On **dynamic-mesh** after settle you should see:
 
 On **basic-mesh**: source **0**, receivers **3** and **5**, FG on **1** and **3**, inbox text `ODMRP works`.
 
+On **overlay-mesh**: IPsec tunnel overlay (no IP multicast). Logical neighbors come from the address book; every TX is **unicast over each current tunnel** via `NeighborSender`. Legend shows tunnel peers vs FG; SUPER marks the ground staging node. Headless proof:
+
+```bash
+python3 scripts/demo_overlay_unicast.py
+```
+
 ## Headless scenario
 
 ```bash

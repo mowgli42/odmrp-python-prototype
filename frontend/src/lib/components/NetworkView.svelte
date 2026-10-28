@@ -54,6 +54,12 @@
     const impl = sim.nodes[String(id)]?.impl
     return impl === 'native' || impl === 'external' || impl === 'java'
   }
+  function isSuper(id: number) {
+    return sim.superNodeIds.includes(id)
+  }
+
+  const logicalLinks = $derived(sim.showLogicalLinks ? sim.logicalLinks : [])
+  const recFlashes = $derived(sim.flashRecs.filter((r) => performance.now() - r.born < 1200))
 
   const meshLinks = $derived(
     sim.topology.links.filter(([a, b]) => inMesh(a) && inMesh(b)),
@@ -94,11 +100,35 @@
     {/if}
   {/each}
 
+  {#each logicalLinks as [a, b]}
+    {@const na = sim.topology.nodes.find((n) => n.id === a)}
+    {@const nb = sim.topology.nodes.find((n) => n.id === b)}
+    {#if na && nb}
+      <line class="logical" x1={sx(na.x)} y1={sy(na.y)} x2={sx(nb.x)} y2={sy(nb.y)} />
+    {/if}
+  {/each}
+
   {#each meshLinks as [a, b]}
     {@const na = sim.topology.nodes.find((n) => n.id === a)}
     {@const nb = sim.topology.nodes.find((n) => n.id === b)}
     {#if na && nb}
       <line class="mesh" x1={sx(na.x)} y1={sy(na.y)} x2={sx(nb.x)} y2={sy(nb.y)} />
+    {/if}
+  {/each}
+
+  {#each recFlashes as r (r.from + '-' + r.to + '-' + r.born)}
+    {@const na = sim.topology.nodes.find((n) => n.id === r.from)}
+    {@const nb = sim.topology.nodes.find((n) => n.id === r.to)}
+    {#if na && nb}
+      {@const u = Math.min(1, (now - r.born) / 1100)}
+      <line
+        class="rec"
+        x1={sx(na.x)}
+        y1={sy(na.y)}
+        x2={sx(nb.x)}
+        y2={sy(nb.y)}
+        opacity={1 - u}
+      />
     {/if}
   {/each}
 
@@ -129,10 +159,14 @@
     {@const mem = isMember(n.id)}
     {@const src = isSource(n.id)}
     {@const native = isNative(n.id)}
+    {@const sup = isSuper(n.id)}
     {@const sel = sim.selected === n.id}
     {@const op = fgOpacity(n.id)}
     {#if fg}
       <circle class="fg-halo" cx={x} cy={y} r="26" opacity={0.15 + op * 0.55} />
+    {/if}
+    {#if sup}
+      <circle class="super-halo" cx={x} cy={y} r="30" />
     {/if}
     {#if src}
       <rect
@@ -140,6 +174,7 @@
         class:member={mem}
         class:fg
         class:native
+        class:super={sup}
         class:selected={sel}
         x={x - 13}
         y={y - 13}
@@ -156,6 +191,7 @@
         class:fg
         class:member={mem}
         class:native
+        class:super={sup}
         class:selected={sel}
         cx={x}
         cy={y}
@@ -172,6 +208,9 @@
     {/if}
     {#if native}
       <text class="badge native-badge" x={x + 16} y={y + (fg ? 0 : -14)}>NAT</text>
+    {/if}
+    {#if sup}
+      <text class="badge super-badge" x={x - 28} y={y - 14}>SUPER</text>
     {/if}
   {/each}
 
@@ -205,6 +244,25 @@
     stroke: var(--amber);
     stroke-width: 3.2;
     opacity: 0.75;
+  }
+  .logical {
+    stroke: var(--teal);
+    stroke-width: 1.6;
+    stroke-dasharray: 5 4;
+    opacity: 0.7;
+  }
+  .rec {
+    stroke: var(--coral);
+    stroke-width: 2.4;
+    stroke-dasharray: 2 3;
+  }
+  .super-halo {
+    fill: none;
+    stroke: var(--teal);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 3;
+    opacity: 0.55;
+    pointer-events: none;
   }
   .node {
     fill: #fff;
@@ -257,6 +315,13 @@
   }
   .badge.native-badge {
     fill: var(--teal);
+  }
+  .badge.super-badge {
+    fill: var(--teal);
+    font-size: 8px;
+  }
+  .node.super {
+    stroke: var(--teal);
   }
   .pkt {
     fill: var(--ink);

@@ -107,10 +107,11 @@ class NodeHost:
         return st
 
     def _tx_all(self, packets: list[Packet], now: float) -> None:
+        """All ODMRP TX (JQ / JR / DATA) exits only via neighbor-send."""
         for pkt in packets:
             if pkt.previous_hop < 0:
                 pkt.previous_hop = self.id
-            self.medium.broadcast(self.id, pkt, now)
+            self.medium.neighbor_send(self.id, pkt, now)
 
     def _diff_state(self, before, now: float) -> None:
         after = self.impl.get_state()
