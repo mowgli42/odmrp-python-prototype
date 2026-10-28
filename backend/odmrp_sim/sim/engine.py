@@ -59,8 +59,11 @@ class SimulationEngine:
     address_book: AddressBook | None = None
     data_plan: DataPlan | None = None
     super_node_policy: SuperNodePolicy = field(default_factory=SuperNodePolicy)
+    gateway_id: NodeId = 0
 
     def __post_init__(self) -> None:
+        from odmrp_sim.services.gateway import GatewayService
+
         self.topology = Topology(default_range=130.0)
         self.scheduler = Scheduler()
         self.bus = EventBus()
@@ -77,6 +80,7 @@ class SimulationEngine:
         )
         self.topology.on_change(self._on_topo)
         self._rebind_neighbors()
+        self.gateway = GatewayService(self, gateway_id=self.gateway_id)
 
     def reset(self, *, seed: int | None = None, params: ProtocolParams | None = None) -> None:
         if seed is not None:
@@ -110,6 +114,9 @@ class SimulationEngine:
         )
         self.topology.on_change(self._on_topo)
         self._rebind_neighbors()
+        from odmrp_sim.services.gateway import GatewayService
+
+        self.gateway = GatewayService(self, gateway_id=self.gateway_id)
         self._next_id = 0
         reset_packet_ids()
         self.bus.emit(0.0, -1, "sim", op="reset", seed=self.seed)
@@ -128,7 +135,13 @@ class SimulationEngine:
         self.address_book = book
         if mode is not None:
             self.overlay_mode = mode
+        supers = book.super_nodes()
+        if supers:
+            self.gateway_id = supers[0].node_id
+            self.gateway.gateway_id = self.gateway_id
+            self.gateway.monitor.gateway_id = self.gateway_id
         self._rebind_neighbors()
+        self.gateway.tick(self.scheduler.now)
         self.bus.emit(
             self.scheduler.now,
             -1,
@@ -141,6 +154,7 @@ class SimulationEngine:
 
     def bind_data_plan(self, plan: DataPlan) -> None:
         self.data_plan = plan
+        self.gateway.replace_data_plan(plan, reannounce=False)
         self.bus.emit(
             self.scheduler.now,
             -1,
@@ -149,6 +163,7 @@ class SimulationEngine:
             name=plan.name,
             messages=len(plan.messages),
             products=len(plan.products),
+            dissemination=len(plan.dissemination),
         )
 
     def set_node_impls(self, mapping: Mapping[NodeId, NodeImplName]) -> None:
@@ -295,6 +310,8 @@ class SimulationEngine:
             if peek_t is None and (next_t is None or next_t > until):
                 self.scheduler.now = until
                 break
+        # Gateway monitor: soft-state tunnel changes may prune DataPlan destinations
+        self.gateway.tick(self.scheduler.now)
         self.bus.emit(self.scheduler.now, -1, "sim", op="step", seed=self.seed)
         return n
 
@@ -320,7 +337,9 @@ class SimulationEngine:
                 "group": self.data_plan.group,
                 "messages": len(self.data_plan.messages),
                 "products": len(self.data_plan.products),
+                "dissemination": [r.to_dict() for r in self.data_plan.dissemination],
             }
+        overlay["gateway"] = self.gateway.status()
         return {
             "sim": {
                 "t": self.scheduler.now,

@@ -65,6 +65,16 @@ class Medium:
         """Unicast ``packet`` once over every active tunnel/peer (sole TX API)."""
         return self.sender.neighbor_send(sender, packet, now)
 
+    def neighbor_send_to(
+        self,
+        sender: NodeId,
+        packet: Packet,
+        peer_ids: list[NodeId] | set[NodeId],
+        now: float,
+    ) -> list[UnicastHop]:
+        """Destination-filtered unicast over active tunnels (gateway DataPlan path)."""
+        return self.sender.neighbor_send_to(sender, packet, peer_ids, now)
+
     def broadcast(self, sender: NodeId, packet: Packet, now: float) -> list[UnicastHop]:
         """Alias for neighbor_send — "broadcast" = unicast to each current neighbor."""
         return self.neighbor_send(sender, packet, now)

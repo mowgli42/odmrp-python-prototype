@@ -45,6 +45,8 @@ On **overlay-mesh**: IPsec tunnel overlay (no IP multicast). Logical neighbors c
 python3 scripts/demo_overlay_unicast.py
 ```
 
+Gateway DataPlan (super-node 0): `GET /api/gateway` shows connected tunnels + dissemination rules; `POST /api/gateway/products` stages an OMS product and announces `product_meta`/`product_loc` only to DataPlan destinations over active tunnels. Disconnects prune destinations via `POST /api/gateway/tick`.
+
 ## Headless scenario
 
 ```bash
