@@ -436,6 +436,30 @@ async def gateway_product_available(body: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+@app.get("/api/sa-feed")
+def get_sa_feed() -> dict[str, Any]:
+    return session.engine.sa_feed.status()
+
+
+@app.post("/api/sa-feed/interest")
+async def sa_feed_interest(body: dict[str, Any]) -> dict[str, Any]:
+    """Express interest in Link16-JREAP-A (or other product_type). Gateway may mint."""
+    node_id = int(body["node_id"])
+    product_type = str(body.get("product_type") or "Link16-JREAP-A")
+    group = str(body.get("group") or "demo")
+    result = session.engine.sa_feed.express_interest(node_id, product_type, group=group)
+    session.engine.run_until(session.engine.scheduler.now + 0.05)
+    return {**result, "sa_feed": session.engine.sa_feed.status()}
+
+
+@app.post("/api/sa-feed/pump")
+async def sa_feed_pump(n: int = 3) -> dict[str, Any]:
+    """Gateway reads the thin JREAP endpoint and relays SA chunks over tunnels."""
+    pumped = session.engine.sa_feed.pump(n_chunks=max(1, min(n, 32)))
+    session.engine.run_until(session.engine.scheduler.now + 0.1)
+    return {"pumped": pumped, "sa_feed": session.engine.sa_feed.status()}
+
+
 @app.post("/api/super-node/push")
 async def super_node_push(body: dict[str, Any]) -> dict[str, Any]:
     book = session.engine.address_book

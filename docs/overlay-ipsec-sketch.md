@@ -62,6 +62,16 @@ Gateway (super-node) path — local only:
 
 API: `GET/PUT /api/data-plan`, `GET /api/gateway`, `POST /api/gateway/tick`, `POST /api/gateway/products`.
 
+## JREAP-A / SA feed
+
+1. Node → `POST /api/sa-feed/interest` `{node_id, product_type: "Link16-JREAP-A"}` (no tunnel/FG side effects).
+2. Gateway checks DataPlan destinations; if authorized, mints ProductLocation at thin endpoint URI (`mock://…` or `tcp://host:port/Link16-JREAP-A`).
+3. Gateway alone opens the endpoint; pumps `sa_chunk` frames over tunnels via `neighbor_send_to`.
+4. FG forwarders **consume locally and relay** the same bytes; `opened_endpoint` stays false (no second connection).
+5. Monitor prune removes leaf subscriptions for disconnected destinations.
+
+`GET /api/sa-feed`, `POST /api/sa-feed/pump` — status and manual pump for the prototype.
+
 ## Super-node overlay
 
 Ground / high-capability nodes push:

@@ -58,6 +58,10 @@ class NodeHost:
         self._diff_state(before, now)
 
     def on_receive(self, packet: Packet, previous_hop: NodeId, now: float) -> None:
+        # SA/JREAP stream chunks: consume-while-forward outside ODMRP FG rebroadcast
+        sa = self._sa_feed()
+        if sa is not None and sa.handle_packet(self.id, packet, previous_hop, now):
+            return
         before = self.impl.get_state()
         # Duplicate check for drop tracing (Python node only)
         if isinstance(self.impl, PythonODMRPNode) and packet.kind != PacketKind.JOIN_REPLY:
@@ -112,6 +116,15 @@ class NodeHost:
             if pkt.previous_hop < 0:
                 pkt.previous_hop = self.id
             self.medium.neighbor_send(self.id, pkt, now)
+
+    def _sa_feed(self):
+        """Resolve SaFeedService from the owning engine when present."""
+        # Medium.on_deliver is bound to SimulationEngine._on_deliver
+        cb = getattr(self.medium, "on_deliver", None)
+        if cb is None:
+            return None
+        eng = getattr(cb, "__self__", None)
+        return getattr(eng, "sa_feed", None) if eng is not None else None
 
     def _diff_state(self, before, now: float) -> None:
         after = self.impl.get_state()
