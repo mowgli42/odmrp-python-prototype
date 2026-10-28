@@ -19,7 +19,7 @@ cd frontend && npm install && npm run dev -- --host 127.0.0.1 --port 5173
 
 Open http://127.0.0.1:5173/ — see `DEMO.md` for the walkthrough and more screenshots.
 
-The UI defaults to **`dynamic-mesh`**: a 16-node grid with waypoint mobility, scripted topology churn, and two `impl: native` process nodes (NAT badges) whose NDJSON IPC is tailed from `traces/native-*.log` in the inspector. Switch to `basic-mesh` from the Scenario control for the classic 6-node ring.
+The UI defaults to **`dynamic-mesh`**: a 16-node grid with waypoint mobility, scripted topology churn, and two `impl: native` process nodes (NAT badges) whose NDJSON IPC is tailed from `traces/native-*.log` in the inspector. Switch to `basic-mesh` for the classic 6-node ring, or **`overlay-mesh`** for the IPsec tunnel overlay (address book, logical neighbors, super-node recommendations, OMS data plan — see `docs/overlay-ipsec-sketch.md` and `fixtures/overlay/`).
 
 Native node inspector (log monitor):
 
@@ -69,7 +69,11 @@ specs/
   visualization/spec.md
   test-harness/spec.md
   java-reference/spec.md   # minimal Java ODMRPNode + differential tests
+  overlay/spec.md          # IPsec tunnel overlay, address book, OMS data plan
 docs/
+  overlay-ipsec-sketch.md
+fixtures/overlay/          # address-book, data-plan, super-node-push examples
+
   review/          architecture review + adherence matrix
   architecture/    C4, component, data-model, state-machine drawings
   sequences/       sequence diagrams

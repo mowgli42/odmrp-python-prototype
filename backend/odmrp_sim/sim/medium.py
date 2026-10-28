@@ -1,9 +1,14 @@
-"""Broadcast medium: schedule deliveries to current neighbours."""
+"""Neighbor-send medium: schedule deliveries to current neighbours.
+
+Uses a NeighborProvider so the same path works for RF topology or
+logical IPsec-tunnel peers (no native IPv4 multicast/broadcast).
+"""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable
 
+from odmrp_sim.dataplane.neighbor_send import NeighborProvider, TopologyNeighborProvider
 from odmrp_sim.model.packets import NodeId, Packet
 from odmrp_sim.sim.rng import SeededRng
 
@@ -23,6 +28,7 @@ class Medium:
         params: ProtocolParams,
         rng: SeededRng,
         on_deliver: Callable[[NodeId, Packet, NodeId, float], None],
+        neighbors: NeighborProvider | None = None,
     ) -> None:
         self.topology = topology
         self.scheduler = scheduler
@@ -30,10 +36,15 @@ class Medium:
         self.params = params
         self.rng = rng
         self.on_deliver = on_deliver
+        self.neighbors = neighbors or TopologyNeighborProvider(topology)
         self._tx_counter = 0
 
+    def set_neighbor_provider(self, provider: NeighborProvider) -> None:
+        self.neighbors = provider
+
     def broadcast(self, sender: NodeId, packet: Packet, now: float) -> None:
-        neighbors = sorted(self.topology.neighbors_of(sender))
+        nbs = self.neighbors.neighbors_of(sender, now=now)
+        neighbors = sorted(nbs)
         self.bus.emit(now, sender, "tx", packet=packet.to_dict(), neighbors=neighbors)
         for i, nb in enumerate(neighbors):
             self._tx_counter += 1

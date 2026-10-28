@@ -39,11 +39,15 @@
         {:else}
           {#each sim.scenarios as s}
             <option value={s.name}>
-              {s.name} ({s.nodes}n{s.has_mobility ? ', mobile' : ''}{s.native_nodes ? `, ${s.native_nodes} native` : ''})
+              {s.name} ({s.nodes}n{s.has_mobility ? ', mobile' : ''}{s.has_overlay ? ', overlay' : ''}{s.native_nodes ? `, ${s.native_nodes} native` : ''})
             </option>
           {/each}
         {/if}
       </select>
+    </label>
+    <label class="toggle" title="Draw IPsec logical neighbor links from the address book">
+      <input type="checkbox" bind:checked={sim.showLogicalLinks} />
+      <span>Tunnels</span>
     </label>
     <label class="speed">
       <span>Speed</span>
@@ -163,6 +167,18 @@
     width: auto;
     min-width: 11rem;
     max-width: 16rem;
+  }
+  .toggle {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-left: 0.25rem;
+  }
+  .toggle input {
+    accent-color: var(--teal);
   }
   .mono {
     font-family: var(--mono);

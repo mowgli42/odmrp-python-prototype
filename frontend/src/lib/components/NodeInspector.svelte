@@ -7,6 +7,11 @@
     node ? node.forwarding_groups?.[sim.selectedGroup] ?? null : null,
   )
   const fgLeft = $derived(fg ? Math.max(0, fg.expires_at - sim.sim.t) : null)
+  const bookEntry = $derived.by(() => {
+    const nodes = sim.overlay.address_book?.nodes
+    if (!node || !Array.isArray(nodes)) return null
+    return nodes.find((n: { node_id: number }) => n.node_id === node.id) ?? null
+  })
   const role = $derived.by(() => {
     if (!node) return []
     const tags: string[] = []
@@ -14,6 +19,7 @@
     if (node.members?.includes(sim.selectedGroup)) tags.push('member')
     if (node.fg?.includes(sim.selectedGroup) || fg) tags.push('FG')
     if (node.impl && node.impl !== 'python') tags.push(node.impl)
+    if (bookEntry?.capabilities?.is_super_node) tags.push('super')
     return tags
   })
   let logLines = $state<string[]>([])
@@ -96,6 +102,16 @@
         <dt>Impl</dt>
         <dd class="mono">{node.impl ?? 'python'}</dd>
       </div>
+      {#if bookEntry}
+        <div>
+          <dt>Callsign</dt>
+          <dd>{bookEntry.callsign}</dd>
+        </div>
+        <div>
+          <dt>Tunnel</dt>
+          <dd class="mono trunc" title={bookEntry.tunnel_endpoint}>{bookEntry.tunnel_endpoint || '—'}</dd>
+        </div>
+      {/if}
       <div>
         <dt>Position</dt>
         <dd>({node.pos.x.toFixed(0)}, {node.pos.y.toFixed(0)})</dd>
@@ -120,6 +136,25 @@
         </dd>
       </div>
     </dl>
+
+    {#if bookEntry?.neighbors?.length}
+      <h3>Logical neighbors</h3>
+      <table>
+        <thead>
+          <tr><th>peer</th><th>pri</th><th>status</th><th>reason</th></tr>
+        </thead>
+        <tbody>
+          {#each bookEntry.neighbors as nb}
+            <tr>
+              <td>{nb.peer_id}</td>
+              <td>{nb.priority}</td>
+              <td>{nb.status}</td>
+              <td>{nb.reason}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {/if}
 
     <h3>Routes</h3>
     {#if Object.keys(node.routes || {}).length === 0}
@@ -243,10 +278,16 @@
   }
   .tag[data-role='native'],
   .tag[data-role='external'],
-  .tag[data-role='java'] {
+  .tag[data-role='java'],
+  .tag[data-role='super'] {
     background: rgba(15, 118, 110, 0.12);
     border-color: rgba(15, 118, 110, 0.4);
     color: var(--teal);
+  }
+  .trunc {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .tag.muted {
     color: var(--muted);

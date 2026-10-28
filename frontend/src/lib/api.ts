@@ -16,6 +16,7 @@ export type ScenarioInfo = {
   nodes: number
   description: string
   has_mobility: boolean
+  has_overlay?: boolean
   native_nodes: number
 }
 
@@ -77,4 +78,13 @@ export const api = {
       total_lines?: number
     }>(`/api/nodes/${id}/log?tail=${tail}`),
   report: (messageId: string) => req<any>(`/api/messages/${messageId}/report`),
+  overlay: () => req<any>('/api/overlay'),
+  addressBook: () => req<any>('/api/address-book'),
+  dataPlan: () => req<any>('/api/data-plan'),
+  superNodePush: (body: unknown) =>
+    req<any>('/api/super-node/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
 }
