@@ -122,3 +122,30 @@ And the gateway monitor ticks
 Then destination 2 is removed from the active DataPlan
 And a subsequent imagery product is announced only to destination 1
 ```
+
+### Requirement: JREAP-A SA feed interest and ProductLocation mint
+Any node SHALL be able to express interest in product type `Link16-JREAP-A` without creating tunnels or changing FG membership. The gateway SHALL evaluate the active DataPlan; only authorized destinations receive a minted ProductMetadata + ProductLocation whose URI points at a thin (mock) JREAP-A endpoint. Announcements use neighbor-send and may be forwarded by current FG members. ODMRP JQ/JR/FG/dup-cache logic SHALL remain unchanged.
+
+#### Scenario: Interest leads to ProductLocation and mock SA stream
+```gherkin
+Given the overlay-mesh scenario has settled with FG formed
+When node 3 expresses interest in Link16-JREAP-A
+Then the gateway authorizes node 3 and mints a ProductLocation
+And the ProductLocation URI points at the thin JREAP endpoint
+When the gateway pumps the SA feed
+Then node 3 has consumed SA bytes
+And only the gateway opened the JREAP endpoint connection
+```
+
+### Requirement: Consume-while-forward without a second JREAP connection
+When SA/JREAP bytes arrive on an upstream tunnel, a node SHALL offer them to a local consumer if it is interested or is an FG forwarder for that product, then relay the same bytes downstream via neighbor-send if forwarding. Each node SHALL keep a per-product record `(upstreamTunnel, consuming, forwarding, downstreamTunnels)`. A node SHALL never open a second connection to the ProductLocation endpoint for a product it is already receiving or forwarding. Pruned destinations SHALL lose leaf subscriptions; relay paths for remaining nodes remain.
+
+#### Scenario: Forwarder consumes without a second connection
+```gherkin
+Given the overlay-mesh scenario has settled with FG formed
+And node 3 has an authorized Link16-JREAP-A subscription
+When the gateway pumps the SA feed
+Then FG forwarder node 1 consumes the stream locally
+And node 1 did not open a second JREAP endpoint connection
+And node 1 forwarded SA chunks downstream toward node 3
+```

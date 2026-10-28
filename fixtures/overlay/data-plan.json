@@ -10,6 +10,12 @@
       "source_node": 0,
       "destinations": [1, 2],
       "group": "demo"
+    },
+    {
+      "product_type": "Link16-JREAP-A",
+      "source_node": 0,
+      "destinations": [3],
+      "group": "demo"
     }
   ],
   "products": [

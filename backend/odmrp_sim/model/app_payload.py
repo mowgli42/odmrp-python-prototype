@@ -6,7 +6,7 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
-AppKind = Literal["text", "chunk", "product_meta", "product_loc"]
+AppKind = Literal["text", "chunk", "product_meta", "product_loc", "sa_chunk"]
 
 
 @dataclass
@@ -19,7 +19,7 @@ class AppPayload:
     total: int | None = None
     name: str | None = None
     sha256: str | None = None
-    data: bytes | None = None  # chunk bytes (not JSON-encoded into body)
+    data: bytes | None = None  # chunk / SA stream bytes (not JSON-encoded into body)
     # OMS announcement envelope (JSON object as dict / string body fallback)
     product: dict[str, Any] | None = None
 
@@ -36,7 +36,7 @@ class AppPayload:
             "product": self.product,
         }
         header = json.dumps(meta, separators=(",", ":")).encode("utf-8")
-        if self.kind == "chunk" and self.data is not None:
+        if self.kind in ("chunk", "sa_chunk") and self.data is not None:
             # length-prefixed header + raw bytes
             return len(header).to_bytes(4, "big") + header + self.data
         return header
@@ -49,8 +49,9 @@ class AppPayload:
             if 2 <= n <= len(raw) - 4 and raw[4:5] == b"{":
                 meta = json.loads(raw[4 : 4 + n].decode("utf-8"))
                 data = raw[4 + n :]
+                kind = meta["kind"]
                 return cls(
-                    kind=meta["kind"],
+                    kind=kind,
                     message_id=meta["message_id"],
                     body=meta.get("body"),
                     transfer_id=meta.get("transfer_id"),
@@ -58,7 +59,7 @@ class AppPayload:
                     total=meta.get("total"),
                     name=meta.get("name"),
                     sha256=meta.get("sha256"),
-                    data=data if meta.get("kind") == "chunk" else None,
+                    data=data if kind in ("chunk", "sa_chunk") else None,
                     product=meta.get("product"),
                 )
         meta = json.loads(raw.decode("utf-8"))
@@ -73,6 +74,7 @@ class AppPayload:
             sha256=meta.get("sha256"),
             product=meta.get("product"),
         )
+
 
 
     def to_dict(self) -> dict[str, Any]:

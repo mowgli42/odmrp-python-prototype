@@ -19,9 +19,9 @@ from typing import TYPE_CHECKING, Any, Protocol
 from odmrp_sim.model.app_payload import AppPayload
 from odmrp_sim.model.data_plan import DataPlan, ProductLocation, ProductMetadata
 from odmrp_sim.model.packets import NodeId, Packet, PacketKind
-
 if TYPE_CHECKING:
     from odmrp_sim.model.address_book import AddressBook
+    from odmrp_sim.services.sa_feed import ProductInterest
     from odmrp_sim.sim.engine import SimulationEngine
 
 
@@ -223,7 +223,53 @@ class GatewayService:
                 op="monitor",
                 **sync,
             )
+        if sync["removed"] and hasattr(self.engine, "sa_feed"):
+            # Tear down leaf JREAP subscriptions for pruned destinations
+            self.engine.sa_feed.on_destinations_pruned(sync["removed"])
         return sync
+
+    def handle_interest(self, interest: ProductInterest) -> dict[str, Any]:
+        """Evaluate DataPlan for interest; mint ProductLocation only if authorized."""
+        plan = self.store.get()
+        if plan is None:
+            return {"authorized": False, "reason": "no_data_plan"}
+        allowed = set(plan.destinations_for(interest.product_type, self.gateway_id))
+        # Also match rules with source=None
+        allowed |= set(plan.destinations_for(interest.product_type, None))
+        if interest.node_id not in allowed:
+            self.engine.bus.emit(
+                self.engine.scheduler.now,
+                self.gateway_id,
+                "gateway",
+                op="interest_denied",
+                node_id=interest.node_id,
+                product_type=interest.product_type,
+                allowed=sorted(allowed),
+            )
+            return {"authorized": False, "reason": "not_in_dataplan", "allowed": sorted(allowed)}
+
+        self.tick()
+        source = self.engine.sa_feed.ensure_endpoint()
+        product = ProductMetadata(
+            product_id=f"prod-{interest.product_type.lower()}",
+            product_type=interest.product_type,
+            title=f"SA feed {interest.product_type}",
+            source_node=self.gateway_id,
+            group=interest.group,
+            location=ProductLocation(
+                uri=source.uri,
+                mime_type="application/x-jreap-a",
+                staging_node=self.gateway_id,
+            ),
+        )
+        staged = self.stage_product(product)
+        # Destinations = authorized interested nodes still listed in the plan
+        interested = self.engine.sa_feed.interested_nodes(interest.product_type)
+        destinations = sorted(allowed & interested)
+        if interest.node_id not in destinations:
+            destinations = sorted(set(destinations) | {interest.node_id})
+        mint = self.engine.sa_feed.on_minted(staged, destinations, announce_via_fg=True)
+        return {"authorized": True, "destinations": destinations, "mint": mint}
 
     def stage_product(self, product: ProductMetadata) -> ProductMetadata:
         """Record a product available at the gateway (staging)."""
@@ -267,16 +313,27 @@ class GatewayService:
             return []
         return plan.destinations_for(product.product_type, product.source_node)
 
-    def disseminate_product(self, product: ProductMetadata) -> DisseminationResult:
+    def disseminate_product(
+        self,
+        product: ProductMetadata,
+        *,
+        destinations_override: list[NodeId] | None = None,
+        use_fg_mesh: bool = False,
+    ) -> DisseminationResult:
         """Create ProductMetadata + ProductLocation announcements; unicast to destinations.
 
-        Transmission uses neighbor_send_to (active tunnels only). Packets use ttl=1
-        so ODMRP FG rebroadcast does not redistribute gateway announcements.
+        Default: ``neighbor_send_to`` over destinations ∩ active tunnels (ttl=1).
+        When ``use_fg_mesh`` is True (JREAP-A path): ``neighbor_send`` to all current
+        tunnels with ttl>1 so current FG members may forward — ODMRP FG rules unchanged.
         """
         self.tick()
-        planned = self.evaluate_destinations(product)
+        planned = (
+            list(destinations_override)
+            if destinations_override is not None
+            else self.evaluate_destinations(product)
+        )
         connected = set(self.monitor.connected)
-        send_to = sorted(set(planned) & connected)
+        send_to = sorted(set(planned) & connected) if not use_fg_mesh else sorted(connected)
         skipped = sorted(set(planned) - connected)
         result = DisseminationResult(
             matched=bool(planned),
@@ -323,11 +380,16 @@ class GatewayService:
         loc_payload = AppPayload(
             kind="product_loc",
             message_id=loc_id,
-            product={"product_id": product.product_id, "location": loc_dict},
+            product={
+                "product_id": product.product_id,
+                "product_type": product.product_type,
+                "location": loc_dict,
+            },
             body=loc_dict.get("uri"),
         ).encode()
 
         hops_all: list[dict[str, Any]] = []
+        ttl = 8 if use_fg_mesh else 1
         for kind_label, payload in (("product_meta", meta_payload), ("product_loc", loc_payload)):
             self._seq += 1
             pkt = Packet(
@@ -336,12 +398,17 @@ class GatewayService:
                 group=str(group),
                 seq=self._seq,
                 previous_hop=self.gateway_id,
-                ttl=1,  # no FG rebroadcast of gateway announcements
+                ttl=ttl,
                 payload=payload,
             )
-            hops = self.engine.medium.neighbor_send_to(
-                self.gateway_id, pkt, send_to, self.engine.scheduler.now
-            )
+            if use_fg_mesh:
+                hops = self.engine.medium.neighbor_send(
+                    self.gateway_id, pkt, self.engine.scheduler.now
+                )
+            else:
+                hops = self.engine.medium.neighbor_send_to(
+                    self.gateway_id, pkt, send_to, self.engine.scheduler.now
+                )
             hops_all.extend(
                 {"peer_id": h.peer_id, "tunnel_endpoint": h.tunnel_endpoint, "kind": kind_label}
                 for h in hops
@@ -354,6 +421,7 @@ class GatewayService:
             self.gateway_id,
             "gateway",
             op="disseminate",
+            use_fg_mesh=use_fg_mesh,
             **result.to_dict(),
         )
         self.last_disseminations.append(result)

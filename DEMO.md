@@ -47,6 +47,8 @@ python3 scripts/demo_overlay_unicast.py
 
 Gateway DataPlan (super-node 0): `GET /api/gateway` shows connected tunnels + dissemination rules; `POST /api/gateway/products` stages an OMS product and announces `product_meta`/`product_loc` only to DataPlan destinations over active tunnels. Disconnects prune destinations via `POST /api/gateway/tick`.
 
+JREAP-A SA feed: after overlay-mesh settles, `POST /api/sa-feed/interest` with `{ "node_id": 3, "product_type": "Link16-JREAP-A" }` mints a ProductLocation if authorized; `POST /api/sa-feed/pump` moves mock SA bytes over tunnels. FG forwarders consume without a second endpoint connection (`GET /api/sa-feed`).
+
 ## Headless scenario
 
 ```bash
