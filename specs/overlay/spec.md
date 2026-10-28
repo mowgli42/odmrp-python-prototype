@@ -40,6 +40,28 @@ Then transmissions list only address-book neighbors of the sender
 And receivers 3 and 5 eventually receive the text payload
 ```
 
+### Requirement: NeighborSender unicasts over each current tunnel
+The system SHALL expose an explicit `NeighborSender` (or equivalent) whose `neighbor_send` primitive loops the current neighbor set and schedules one unicast delivery per active tunnel peer. ODMRP Join Query / Join Reply / data forwarding SHALL call only that primitive. Trace `tx` events SHALL record `mode=unicast_over_neighbors` and a per-peer `unicasts` list (peer_id + tunnel_endpoint). There SHALL be no reliance on native IPv4 multicast or link-layer broadcast.
+
+#### Scenario: Tunnel mode TX is unicast over address-book peers only
+```gherkin
+Given the overlay-mesh scenario is loaded in tunnel mode
+When the simulation settles
+Then every transmission uses mode unicast_over_neighbors
+And source 0 unicasts only to its address-book tunnel peers
+And no transmission lists a peer outside the sender's active neighbor set
+```
+
+#### Scenario: Sparse FG mesh delivers data without IP multicast
+```gherkin
+Given the overlay-mesh scenario is loaded in tunnel mode
+When the simulation settles
+Then the neighbor graph is not a full mesh
+And receivers 3 and 5 have delivered the overlay text payload
+And non-FG node 4 does not forward DATA for group "demo"
+And FG members for "demo" are among the relay nodes
+```
+
 ### Requirement: OMS-aligned data plan maps messages and products
 The system SHALL load a data plan that maps short text messages and file products onto ODMRP data messaging, with ProductMetadata and ProductLocation (uri, mime_type, expires_at, staging_node, tunnel_endpoint) resolved against the address book.
 

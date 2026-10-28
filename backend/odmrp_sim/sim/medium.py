@@ -1,14 +1,20 @@
-"""Neighbor-send medium: schedule deliveries to current neighbours.
+"""Neighbor-send medium: unicast over each current logical neighbor.
 
-Uses a NeighborProvider so the same path works for RF topology or
-logical IPsec-tunnel peers (no native IPv4 multicast/broadcast).
+All ODMRP TX goes through NeighborSender.neighbor_send — never IP multicast
+or link-layer broadcast. Peer set comes from NeighborProvider (RF topology
+or address-book IPsec tunnels).
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable
 
-from odmrp_sim.dataplane.neighbor_send import NeighborProvider, TopologyNeighborProvider
+from odmrp_sim.dataplane.neighbor_send import (
+    NeighborProvider,
+    NeighborSender,
+    TopologyNeighborProvider,
+    UnicastHop,
+)
 from odmrp_sim.model.packets import NodeId, Packet
 from odmrp_sim.sim.rng import SeededRng
 
@@ -20,6 +26,8 @@ if TYPE_CHECKING:
 
 
 class Medium:
+    """Thin host-facing façade over NeighborSender (the sole TX boundary)."""
+
     def __init__(
         self,
         topology: Topology,
@@ -36,33 +44,27 @@ class Medium:
         self.params = params
         self.rng = rng
         self.on_deliver = on_deliver
-        self.neighbors = neighbors or TopologyNeighborProvider(topology)
-        self._tx_counter = 0
+        provider = neighbors or TopologyNeighborProvider(topology)
+        self.sender = NeighborSender(
+            provider=provider,
+            scheduler=scheduler,
+            bus=bus,
+            params=params,
+            rng=rng,
+            on_deliver=on_deliver,
+        )
+
+    @property
+    def neighbors(self) -> NeighborProvider:
+        return self.sender.provider
 
     def set_neighbor_provider(self, provider: NeighborProvider) -> None:
-        self.neighbors = provider
+        self.sender.set_provider(provider)
 
-    def broadcast(self, sender: NodeId, packet: Packet, now: float) -> None:
-        nbs = self.neighbors.neighbors_of(sender, now=now)
-        neighbors = sorted(nbs)
-        self.bus.emit(now, sender, "tx", packet=packet.to_dict(), neighbors=neighbors)
-        for i, nb in enumerate(neighbors):
-            self._tx_counter += 1
-            jitter = self.rng.uniform(sender, "jq", self._tx_counter, low=0.0, high=self.params.jq_jitter)
-            delay = self.params.hop_delay + jitter
-            arrive = now + delay
+    def neighbor_send(self, sender: NodeId, packet: Packet, now: float) -> list[UnicastHop]:
+        """Unicast ``packet`` once over every active tunnel/peer (sole TX API)."""
+        return self.sender.neighbor_send(sender, packet, now)
 
-            def _cb(ev, _nb=nb, _pkt=packet, _sender=sender):  # noqa: B023
-                t = ev.t
-                self.bus.emit(
-                    t, _nb, "rx", **{"packet_id": _pkt.id, "from": _sender, "pkind": _pkt.kind.value}
-                )
-                self.on_deliver(_nb, _pkt, _sender, t)
-
-            self.scheduler.schedule(
-                arrive,
-                "deliver",
-                node=nb,
-                payload={"packet_id": packet.id, "from": sender},
-                callback=_cb,
-            )
+    def broadcast(self, sender: NodeId, packet: Packet, now: float) -> list[UnicastHop]:
+        """Alias for neighbor_send — "broadcast" = unicast to each current neighbor."""
+        return self.neighbor_send(sender, packet, now)

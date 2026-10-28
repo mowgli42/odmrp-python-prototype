@@ -2,23 +2,34 @@
 
 Ponytail design for ODMRP without native IPv4 multicast/broadcast.
 
-## Neighbor-send
+## Neighbor-send (sole TX boundary)
 
 All ODMRP TX (JQ / JR / DATA) goes through one primitive:
 
 ```text
-neighbor_send(sender, packet) → for each active peer in NeighborProvider
+NeighborSender.neighbor_send(sender, packet, now)
+  → for each UnicastHop in NeighborProvider.hops_of(sender):
+       schedule one unicast delivery (sim) / one tunnel send (real later)
 ```
+
+`Medium` is a thin façade; `NodeHost._tx_all` calls only `medium.neighbor_send`.
+"Broadcast to neighbors" means: loop the current neighbor set and unicast the
+same packet once per active peer. Trace `tx` carries:
+
+- `mode: "unicast_over_neighbors"`
+- `neighbors: [peer_id, …]`
+- `unicasts: [{peer_id, tunnel_endpoint}, …]`
 
 Providers:
 
 | Mode | Provider | Peer set |
 | --- | --- | --- |
-| `radio` | `TopologyNeighborProvider` | unit-disk RF |
+| `radio` | `TopologyNeighborProvider` | unit-disk RF (still unicast-per-peer) |
 | `tunnel` | `AddressBookNeighborProvider` | address-book soft-state tunnels |
 | `hybrid` | `HybridNeighborProvider` | logical if present, else RF |
 
-FG-scoped data forwarding is unchanged: only FG members (and sources/members as today) rebroadcast, still via neighbor-send.
+Protocol algorithms are unchanged: reverse-path learning, Join Reply → FG flag,
+duplicate cache, FG-scoped pure DATA. Only the wire primitive is neighbor-send.
 
 ## Address book
 
@@ -26,8 +37,11 @@ FG-scoped data forwarding is unchanged: only FG members (and sources/members as 
 
 - capabilities (`is_super_node`, `can_stage_products`, …)
 - `tunnel_endpoint` (e.g. `ipsec://10.8.0.1:500`)
-- `neighbors[]` with status / priority / reason / expires_at
+- `neighbors[]` with status / priority / reason / expires_at (soft-state)
 - import/export of edge lists via `/api/address-book/export|import/neighbors`
+
+Sparse by design: source 0 tunnels only to relays 1 and 2 (not a full mesh);
+far receiver 5 has no direct tunnel to 0.
 
 ## OMS data plan
 
@@ -47,6 +61,11 @@ Ground / high-capability nodes push:
 
 Policy knobs: `max_neighbors`, `preference` (`geo`|`capability`|`priority`|`mixed`), `refresh_interval`, `soft_state_ttl`.
 
-## Scenario
+## Scenario + visualization
 
-`scenarios/overlay-mesh.yaml` wires tunnel mode + fixtures + classic join/text script so FG delivery still proves out.
+`scenarios/overlay-mesh.yaml` wires tunnel mode + fixtures + join/text script.
+UI draws RF links, logical tunnel peers, SUPER markers, and FG membership
+separately so tunnels vs FG mesh are visible.
+
+Later the same `NeighborSender` boundary can bind to simulated radio or real
+IPsec tunnel sockets without changing JQ/JR/FG/dup-cache logic.
