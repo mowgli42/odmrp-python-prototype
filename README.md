@@ -19,7 +19,7 @@ cd frontend && npm install && npm run dev -- --host 127.0.0.1 --port 5173
 
 Open http://127.0.0.1:5173/ — see `DEMO.md` for the walkthrough and more screenshots.
 
-The UI defaults to **`dynamic-mesh`**: a 16-node grid with waypoint mobility, scripted topology churn, and two `impl: native` process nodes (NAT badges) whose NDJSON IPC is tailed from `traces/native-*.log` in the inspector. Switch to `basic-mesh` for the classic 6-node ring, or **`overlay-mesh`** for the IPsec tunnel overlay (address book, logical neighbors, super-node recommendations, OMS data plan — see `docs/overlay-ipsec-sketch.md` and `fixtures/overlay/`).
+The UI defaults to **`dynamic-mesh`**: a 16-node grid with waypoint mobility, scripted topology churn, and two `impl: native` process nodes (NAT badges) whose NDJSON IPC is tailed from `traces/native-*.log` in the inspector. Switch to `basic-mesh` for the classic 6-node ring, **`markov-mesh`** for the same ring with a configurable nested Markov RF link model (links flap UP/DOWN on an interval so Play can run longer under churn), or **`overlay-mesh`** for the IPsec tunnel overlay (address book, logical neighbors, super-node recommendations, OMS data plan — see `docs/overlay-ipsec-sketch.md` and `fixtures/overlay/`).
 
 Native node inspector (log monitor):
 

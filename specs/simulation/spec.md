@@ -88,3 +88,23 @@ Given a running simulation
 When the frontend requests the state of node 3
 Then the response includes node 3's position, FG flags, and group memberships
 ```
+
+### Requirement: Optional Markov RF link model
+A scenario MAY declare a `link_model` block of type `markov` that periodically re-evaluates each geometrically eligible undirected radio pair with a nested stay/re-eval state machine. Probabilities and interval SHALL be configurable. While a pair is DOWN the topology SHALL treat it as disconnected (no neighbor-send over that hop) and emit `link_down` / `link_up` when the active set changes. The process SHALL be deterministic for a fixed seed.
+
+#### Scenario: Markov link model flaps geometric neighbors on an interval
+```gherkin
+Given a two-node topology within radio range
+And a markov link model with interval 1 that always drops then restores
+When the simulation advances by 1 second
+Then the nodes are not neighbors
+When the simulation advances by 1 more second
+Then the nodes are neighbors again
+```
+
+#### Scenario: markov-mesh scenario arms the link model at load
+```gherkin
+Given the markov-mesh scenario is loaded
+Then a link_model sim event was emitted
+And a link_model scheduler tick is pending
+```

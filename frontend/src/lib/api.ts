@@ -17,6 +17,7 @@ export type ScenarioInfo = {
   description: string
   has_mobility: boolean
   has_overlay?: boolean
+  has_link_model?: boolean
   native_nodes: number
 }
 
