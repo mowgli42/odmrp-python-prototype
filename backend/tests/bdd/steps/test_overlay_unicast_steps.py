@@ -8,7 +8,7 @@ file under tests/bdd/features/ for OpenSpec / human review.
 from pathlib import Path
 
 from odmrp_sim.model.packets import Packet, PacketKind
-from odmrp_sim.services.scenarios import load_scenario
+from odmrp_sim.services.scenarios import load_scenario, script_horizon
 from odmrp_sim.sim.engine import SimulationEngine
 
 FEATURE = Path(__file__).resolve().parents[1] / "features" / "overlay_unicast.feature"
@@ -18,11 +18,11 @@ SCENARIO = Path(__file__).resolve().parents[4] / "scenarios" / "overlay-mesh.yam
 def _settle():
     assert FEATURE.is_file(), f"missing Gherkin feature: {FEATURE}"
     eng = SimulationEngine()
-    load_scenario(eng, SCENARIO)
+    data = load_scenario(eng, SCENARIO)
     assert eng.overlay_mode == "tunnel"
     assert eng.address_book is not None
     assert eng.medium.sender is not None
-    eng.run_until(eng.scheduler.now + 0.5)
+    eng.run_until(script_horizon(data) + 0.5)
     return eng
 
 

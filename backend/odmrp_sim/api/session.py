@@ -21,14 +21,22 @@ class Session:
         self._runner: asyncio.Task | None = None
         self._lock = asyncio.Lock()
         self.ws_clients: set = set()
+        self.scenario_name: str | None = None
+
+    async def load_named_scenario(self, name: str) -> dict:
+        """Pause, load scenario YAML, schedule script ops, leave paused at t=0."""
+        await self.pause()
+        path = SCENARIOS / f"{name}.yaml"
+        async with self._lock:
+            # Fresh messaging so delivery-report state does not leak across loads.
+            self.messaging = MessagingService(self.engine)
+            data = load_scenario(self.engine, path, self.messaging)
+            self.scenario_name = name
+            # Do not run_until here — script fires when Play/step advances time.
+            return data
 
     async def load_basic_mesh(self) -> dict:
-        async with self._lock:
-            path = SCENARIOS / "basic-mesh.yaml"
-            data = load_scenario(self.engine, path, self.messaging)
-            # Settle flood
-            self.engine.run_until(self.engine.scheduler.now + 0.5)
-            return data
+        return await self.load_named_scenario("basic-mesh")
 
     async def step(self, dt: float) -> dict:
         async with self._lock:
@@ -55,8 +63,17 @@ class Session:
             self._runner = None
 
     async def reset(self) -> None:
+        """Pause, clear engine, and reload the current scenario at t=0 (script scheduled only)."""
         await self.pause()
+        name = self.scenario_name
         async with self._lock:
+            if name:
+                path = SCENARIOS / f"{name}.yaml"
+                if path.exists():
+                    self.messaging = MessagingService(self.engine)
+                    load_scenario(self.engine, path, self.messaging)
+                    self.scenario_name = name
+                    return
             self.engine.reset(seed=self.engine.seed, params=self.engine.params)
             self.messaging = MessagingService(self.engine)
 
@@ -64,6 +81,9 @@ class Session:
         try:
             while self.engine.mode == SimMode.RUNNING:
                 async with self._lock:
+                    # Bail if reset/load flipped mode while we waited for the lock.
+                    if self.engine.mode != SimMode.RUNNING:
+                        break
                     dt = 0.020 * self.engine.speed
                     self.engine.step(dt)
                 await asyncio.sleep(0.020)

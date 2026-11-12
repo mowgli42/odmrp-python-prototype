@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from odmrp_sim.services.scenarios import load_scenario
+from odmrp_sim.services.scenarios import load_scenario, script_horizon
 from odmrp_sim.sim.engine import SimulationEngine
 
 SCENARIO = Path(__file__).resolve().parents[3] / "scenarios" / "basic-mesh.yaml"
@@ -8,8 +8,8 @@ SCENARIO = Path(__file__).resolve().parents[3] / "scenarios" / "basic-mesh.yaml"
 
 def _run():
     eng = SimulationEngine()
-    load_scenario(eng, SCENARIO)
-    eng.run_until(eng.scheduler.now + 0.5)
+    data = load_scenario(eng, SCENARIO)
+    eng.run_until(script_horizon(data) + 0.5)
     events = [
         (e.t, e.kind, e.node, {k: v for k, v in e.payload.items() if k != "packet"})
         for e in eng.bus.ring

@@ -6,14 +6,25 @@ import argparse
 from pathlib import Path
 
 from odmrp_sim.services.messaging import MessagingService
-from odmrp_sim.services.scenarios import load_scenario
+from odmrp_sim.services.scenarios import load_scenario, script_horizon
 from odmrp_sim.sim.engine import SimulationEngine
 
 
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description="Run an ODMRP scenario headless")
     p.add_argument("scenario", nargs="?", default="basic-mesh")
-    p.add_argument("--settle", type=float, default=0.5)
+    p.add_argument(
+        "--settle",
+        type=float,
+        default=0.5,
+        help="Seconds to advance past the last scripted event (default 0.5)",
+    )
+    p.add_argument(
+        "--until",
+        type=float,
+        default=None,
+        help="Absolute sim time to run to (overrides --settle when set)",
+    )
     p.add_argument("--trace", type=Path, default=Path("traces/run.jsonl"))
     args = p.parse_args(argv)
 
@@ -22,8 +33,9 @@ def main(argv: list[str] | None = None) -> None:
     eng = SimulationEngine()
     msg = MessagingService(eng)
     eng.bus.open_file(args.trace)
-    load_scenario(eng, path, msg)
-    eng.run_until(eng.scheduler.now + args.settle)
+    data = load_scenario(eng, path, msg)
+    until = args.until if args.until is not None else script_horizon(data) + args.settle
+    eng.run_until(until)
     eng.bus.close_file()
 
     fg = sorted(

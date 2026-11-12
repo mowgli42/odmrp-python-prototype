@@ -45,6 +45,40 @@ When the simulation is advanced by 5.1 seconds
 Then the FG flag has expired
 ```
 
+### Requirement: Scenario load schedules script without advancing time
+Loading a scenario SHALL create nodes, overlay, and data plan, schedule scripted operations on the discrete-event scheduler, and leave the engine paused at t=0 with no scripted events executed. Play (or step) SHALL advance time at the configured speed and execute script ops when simulation time reaches their `at` values. Reset SHALL pause, clear engine state, reload the current scenario at t=0, and leave the UI ready to play again.
+
+#### Scenario: Load leaves simulation paused at t=0 ready to play
+```gherkin
+Given the basic-mesh scenario is loaded for playback
+Then simulation time is 0
+And the simulation mode is "paused"
+And no scripted join or text events have executed yet
+And scripted operations are scheduled on the engine
+```
+
+#### Scenario: Play at 1x executes scripted events progressively
+```gherkin
+Given the basic-mesh scenario is loaded for playback
+When the simulation advances at 1x through the script horizon plus settle
+Then scripted joins and the text payload have executed
+And the forwarding group for "demo" is nodes 1 and 3
+And nodes 3 and 5 have delivered "ODMRP works"
+And simulation time is greater than 1
+```
+
+#### Scenario: Reset restores clean initial state at t=0
+```gherkin
+Given the basic-mesh scenario is loaded for playback
+And the simulation advances at 1x through the script horizon plus settle
+When the scenario is reset for playback
+Then simulation time is 0
+And the simulation mode is "paused"
+And no scripted join or text events have executed yet
+And scripted operations are scheduled on the engine
+And the simulation is ready to play again
+```
+
 ### Requirement: Node state is observable
 The system SHALL expose, for every node, its current routing table, forwarding group memberships, group memberships, and recent packet log.
 

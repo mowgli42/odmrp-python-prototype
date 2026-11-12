@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from odmrp_sim.model.packets import Packet, PacketKind  # noqa: E402
-from odmrp_sim.services.scenarios import load_scenario  # noqa: E402
+from odmrp_sim.services.scenarios import load_scenario, script_horizon  # noqa: E402
 from odmrp_sim.sim.engine import SimulationEngine  # noqa: E402
 
 SCENARIO = ROOT / "scenarios" / "overlay-mesh.yaml"
@@ -40,7 +40,7 @@ def main() -> int:
     assert 5 not in src_peers
     assert src_peers == [1, 2]
 
-    eng.run_until(eng.scheduler.now + 0.5)
+    eng.run_until(script_horizon(data) + 0.5)
 
     txs = [e for e in eng.bus.ring if e.kind == "tx"]
     assert txs and all(e.payload.get("mode") == "unicast_over_neighbors" for e in txs)

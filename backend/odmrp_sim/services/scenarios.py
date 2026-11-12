@@ -12,7 +12,8 @@ from odmrp_sim.model.super_node import SuperNodePush
 from odmrp_sim.services.address_book_svc import apply_super_node_push, load_address_book
 from odmrp_sim.services.data_plan_svc import load_data_plan, resolve_endpoints
 from odmrp_sim.services.mobility import arm_waypoint_mobility
-from odmrp_sim.sim.engine import NodeImplName, SimulationEngine
+from odmrp_sim.sim.engine import NodeImplName, SimMode, SimulationEngine
+from odmrp_sim.sim.scheduler import Event
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -34,7 +35,20 @@ def _resolve_log(raw: Any, node_id: int) -> Path | None:
     return path
 
 
+def script_horizon(data: dict[str, Any]) -> float:
+    """Latest scripted `at` time in a scenario document (0 if none)."""
+    script = data.get("script") or []
+    if not script:
+        return 0.0
+    return max(float(s.get("at", 0)) for s in script)
+
+
 def load_scenario(engine: SimulationEngine, path: Path | str, messaging=None) -> dict[str, Any]:
+    """Parse YAML, create nodes/overlay, and *schedule* script ops without advancing time.
+
+    After return the engine is paused at t=0 with scripted join/text/move/… events
+    queued on the scheduler. Call ``engine.run_until`` / Play to execute them.
+    """
     path = Path(path)
     data = yaml.safe_load(path.read_text())
     seed = int(data.get("seed", 42))
@@ -65,43 +79,64 @@ def load_scenario(engine: SimulationEngine, path: Path | str, messaging=None) ->
     if overlay:
         _apply_overlay(engine, overlay)
 
-    # Schedule script ops by advancing time between them
+    # Schedule script ops as future scheduler events — do not run_until here.
     script = sorted(data.get("script", []), key=lambda s: float(s.get("at", 0)))
-    last_t = 0.0
-    for step in script:
-        at = float(step.get("at", 0))
-        if at > last_t:
-            engine.run_until(at)
-            last_t = at
-        op = step["op"]
-        if op == "join":
-            engine.join(int(step["node"]), str(step["group"]))
-        elif op == "leave":
-            engine.leave(int(step["node"]), str(step["group"]))
-        elif op == "text":
-            if messaging is None:
-                from odmrp_sim.model.app_payload import AppPayload
-                import uuid
-
-                mid = str(uuid.uuid4())
-                payload = AppPayload(kind="text", message_id=mid, body=str(step["text"])).encode()
-                engine.originate(int(step["node"]), str(step["group"]), payload)
-            else:
-                messaging.send_text(int(step["node"]), str(step["group"]), str(step["text"]))
-        elif op == "move":
-            engine.move_node(int(step["node"]), float(step["x"]), float(step["y"]))
-        elif op == "file":
-            # Reserved for future file-transfer demos; ignore safely for now.
-            continue
-        else:
-            raise ValueError(f"unknown script op: {op}")
+    _schedule_script(engine, script, messaging)
 
     mobility = data.get("mobility")
     if mobility:
         arm_waypoint_mobility(engine, mobility)
 
+    engine.mode = SimMode.PAUSED
     engine.bus.emit(engine.scheduler.now, -1, "sim", op="load", seed=seed, scenario=engine.scenario)
     return data
+
+
+def _apply_script_op(engine: SimulationEngine, step: dict[str, Any], messaging) -> None:
+    op = step["op"]
+    if op == "join":
+        engine.join(int(step["node"]), str(step["group"]))
+    elif op == "leave":
+        engine.leave(int(step["node"]), str(step["group"]))
+    elif op == "text":
+        if messaging is None:
+            from odmrp_sim.model.app_payload import AppPayload
+            import uuid
+
+            mid = str(uuid.uuid4())
+            payload = AppPayload(kind="text", message_id=mid, body=str(step["text"])).encode()
+            engine.originate(int(step["node"]), str(step["group"]), payload)
+        else:
+            messaging.send_text(int(step["node"]), str(step["group"]), str(step["text"]))
+    elif op == "move":
+        engine.move_node(int(step["node"]), float(step["x"]), float(step["y"]))
+    elif op == "file":
+        # Reserved for future file-transfer demos; ignore safely for now.
+        return
+    else:
+        raise ValueError(f"unknown script op: {op}")
+
+
+def _schedule_script(engine: SimulationEngine, script: list[dict[str, Any]], messaging) -> None:
+    for step in script:
+        op = step.get("op")
+        if op == "file":
+            continue
+        if op not in ("join", "leave", "text", "move"):
+            raise ValueError(f"unknown script op: {op}")
+        at = float(step.get("at", 0))
+        node = int(step["node"]) if "node" in step else -1
+        # Bind step by default-arg so the loop variable is not shared across callbacks.
+        def _cb(ev: Event, step: dict[str, Any] = step) -> None:
+            _apply_script_op(engine, step, messaging)
+
+        engine.scheduler.schedule(
+            at,
+            "script",
+            node=node,
+            payload={"op": op, "at": at},
+            callback=_cb,
+        )
 
 
 def _apply_overlay(engine: SimulationEngine, overlay: dict[str, Any]) -> None:

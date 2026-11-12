@@ -12,7 +12,7 @@ from odmrp_sim.model.packets import Packet, PacketKind
 from odmrp_sim.model.super_node import SuperNodePush
 from odmrp_sim.services.address_book_svc import apply_super_node_push, load_address_book
 from odmrp_sim.services.data_plan_svc import load_data_plan, resolve_endpoints, text_messages
-from odmrp_sim.services.scenarios import load_scenario
+from odmrp_sim.services.scenarios import load_scenario, script_horizon
 from odmrp_sim.sim.engine import SimulationEngine
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -95,7 +95,7 @@ def test_medium_exposes_neighbor_sender():
 def test_overlay_mesh_tunnel_delivers():
     eng = SimulationEngine()
     data = load_scenario(eng, SCENARIO)
-    eng.run_until(eng.scheduler.now + 0.5)
+    eng.run_until(script_horizon(data) + 0.5)
     assert eng.overlay_mode == "tunnel"
     assert eng.address_book is not None
     assert eng.data_plan is not None
@@ -128,8 +128,8 @@ def test_sparse_neighbor_set_not_full_mesh():
 
 def test_fg_only_pure_data_via_neighbor_send():
     eng = SimulationEngine()
-    load_scenario(eng, SCENARIO)
-    eng.run_until(eng.scheduler.now + 0.5)
+    data = load_scenario(eng, SCENARIO)
+    eng.run_until(script_horizon(data) + 0.5)
     fg = sorted(
         nid for nid, h in eng.hosts.items() if "demo" in h.get_state().forwarding_groups
     )
