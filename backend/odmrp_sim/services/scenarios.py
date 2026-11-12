@@ -11,6 +11,7 @@ from odmrp_sim.model.params import ProtocolParams
 from odmrp_sim.model.super_node import SuperNodePush
 from odmrp_sim.services.address_book_svc import apply_super_node_push, load_address_book
 from odmrp_sim.services.data_plan_svc import load_data_plan, resolve_endpoints
+from odmrp_sim.services.link_model import arm_markov_links
 from odmrp_sim.services.mobility import arm_waypoint_mobility
 from odmrp_sim.sim.engine import NodeImplName, SimMode, SimulationEngine
 from odmrp_sim.sim.scheduler import Event
@@ -86,6 +87,10 @@ def load_scenario(engine: SimulationEngine, path: Path | str, messaging=None) ->
     mobility = data.get("mobility")
     if mobility:
         arm_waypoint_mobility(engine, mobility)
+
+    link_model = data.get("link_model")
+    if link_model:
+        arm_markov_links(engine, link_model)
 
     engine.mode = SimMode.PAUSED
     engine.bus.emit(engine.scheduler.now, -1, "sim", op="load", seed=seed, scenario=engine.scenario)
@@ -192,6 +197,7 @@ def list_scenarios(scenarios_dir: Path | str) -> list[dict[str, Any]]:
                 "description": data.get("description", ""),
                 "has_mobility": bool(data.get("mobility")),
                 "has_overlay": bool(data.get("overlay")),
+                "has_link_model": bool(data.get("link_model")),
                 "native_nodes": sum(
                     1 for n in nodes if str(n.get("impl", "python")) in ("native", "external", "java")
                 ),

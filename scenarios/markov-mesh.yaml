@@ -1,0 +1,43 @@
+name: markov-mesh
+description: >
+  Basic 6-node ring with a nested Markov RF link model. Geometric neighbors
+  flap UP/DOWN every interval so Play can run longer while the mesh soft-state
+  reacts to link churn. All probabilities are configurable under link_model.
+seed: 42
+range: 130
+params:
+  route_refresh_interval: 3.0
+  fg_timeout: 9.0
+  route_timeout: 9.0
+  jq_jitter: 0.0
+  jr_delay: 0.0
+  hop_delay: 0.001
+nodes:
+  - { id: 0, x: 100, y: 200 }
+  - { id: 1, x: 200, y: 120 }
+  - { id: 2, x: 200, y: 280 }
+  - { id: 3, x: 300, y: 120 }
+  - { id: 4, x: 300, y: 280 }
+  - { id: 5, x: 400, y: 200 }
+link_model:
+  type: markov
+  interval: 1.0
+  seed: 42
+  initial: up
+  # Nested demo defaults: when UP, 75% keep / 25% re-eval (then 25% drop);
+  # when DOWN, 25% keep / 75% re-eval (then 75% restore).
+  p_keep_up: 0.75
+  p_down_on_reeval: 0.25
+  p_keep_down: 0.25
+  p_up_on_reeval: 0.75
+script:
+  - { at: 0.0, op: join, node: 3, group: demo }
+  - { at: 0.0, op: join, node: 5, group: demo }
+  - { at: 1.0, op: text, node: 0, group: demo, text: "ODMRP works" }
+  # Extra traffic so longer Play sessions keep exercising the mesh under churn.
+  - { at: 5.0, op: text, node: 0, group: demo, text: "still connected?" }
+  - { at: 10.0, op: text, node: 0, group: demo, text: "markov mesh heartbeat" }
+  - { at: 15.0, op: text, node: 0, group: demo, text: "soft-state refresh under churn" }
+expect:
+  fg_nodes: [1, 3]
+  delivered_to_min: 1

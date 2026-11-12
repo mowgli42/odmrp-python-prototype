@@ -39,7 +39,7 @@
         {:else}
           {#each sim.scenarios as s}
             <option value={s.name}>
-              {s.name} ({s.nodes}n{s.has_mobility ? ', mobile' : ''}{s.has_overlay ? ', overlay' : ''}{s.native_nodes ? `, ${s.native_nodes} native` : ''})
+              {s.name} ({s.nodes}n{s.has_mobility ? ', mobile' : ''}{s.has_overlay ? ', overlay' : ''}{s.has_link_model ? ', markov' : ''}{s.native_nodes ? `, ${s.native_nodes} native` : ''})
             </option>
           {/each}
         {/if}

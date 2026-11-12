@@ -10,6 +10,10 @@ from odmrp_sim.model.packets import NodeId
 from odmrp_sim.model.state import Position
 
 
+def _undirected(a: NodeId, b: NodeId) -> tuple[NodeId, NodeId]:
+    return (a, b) if a < b else (b, a)
+
+
 @dataclass
 class TopoNode:
     id: NodeId
@@ -22,6 +26,8 @@ class Topology:
     default_range: float = 130.0
     nodes: dict[NodeId, TopoNode] = field(default_factory=dict)
     _neighbors: dict[NodeId, set[NodeId]] = field(default_factory=dict)
+    # Undirected pairs forced down by a link model (e.g. Markov) while still in range.
+    _disabled: set[tuple[NodeId, NodeId]] = field(default_factory=set)
     _on_change: list[Callable[[dict], None]] = field(default_factory=list, repr=False)
 
     def on_change(self, cb: Callable[[dict], None]) -> None:
@@ -43,6 +49,7 @@ class Topology:
         if node_id not in self.nodes:
             return
         del self.nodes[node_id]
+        self._disabled = {p for p in self._disabled if node_id not in p}
         self._recompute()
         self._emit({"op": "remove", "a": node_id})
 
@@ -65,14 +72,60 @@ class Topology:
     def clear(self) -> None:
         self.nodes.clear()
         self._neighbors.clear()
+        self._disabled.clear()
 
     def distance(self, a: NodeId, b: NodeId) -> float:
         pa, pb = self.nodes[a].pos, self.nodes[b].pos
         return math.hypot(pa.x - pb.x, pa.y - pb.y)
 
-    def _linked(self, a: TopoNode, b: TopoNode) -> bool:
+    def is_disabled(self, a: NodeId, b: NodeId) -> bool:
+        return _undirected(a, b) in self._disabled
+
+    def disable_link(self, a: NodeId, b: NodeId) -> bool:
+        """Force a geometrically eligible link down. Returns True if state changed."""
+        key = _undirected(a, b)
+        if key in self._disabled:
+            return False
+        was = key[1] in self.neighbors_of(key[0])
+        self._disabled.add(key)
+        self._recompute()
+        if was:
+            self._emit({"op": "link_down", "a": key[0], "b": key[1], "reason": "link_model"})
+        return True
+
+    def enable_link(self, a: NodeId, b: NodeId) -> bool:
+        """Clear a forced-down mask. Returns True if the active link set changed."""
+        key = _undirected(a, b)
+        if key not in self._disabled:
+            return False
+        self._disabled.discard(key)
+        self._recompute()
+        if key[0] in self.nodes and key[1] in self.nodes:
+            if self._geometrically_linked(self.nodes[key[0]], self.nodes[key[1]]):
+                if key[1] in self.neighbors_of(key[0]):
+                    self._emit({"op": "link_up", "a": key[0], "b": key[1], "reason": "link_model"})
+                    return True
+        return True
+
+    def _geometrically_linked(self, a: TopoNode, b: TopoNode) -> bool:
         d = math.hypot(a.pos.x - b.pos.x, a.pos.y - b.pos.y)
         return d <= min(a.range, b.range)
+
+    def _linked(self, a: TopoNode, b: TopoNode) -> bool:
+        if self.is_disabled(a.id, b.id):
+            return False
+        return self._geometrically_linked(a, b)
+
+    def geometric_pairs(self) -> list[tuple[NodeId, NodeId]]:
+        """Undirected pairs currently within radio range (ignoring link-model masks)."""
+        ids = list(self.nodes)
+        out: list[tuple[NodeId, NodeId]] = []
+        for i, a in enumerate(ids):
+            for b in ids[i + 1 :]:
+                if self._geometrically_linked(self.nodes[a], self.nodes[b]):
+                    out.append(_undirected(a, b))
+        out.sort()
+        return out
 
     def _recompute(self) -> None:
         ids = list(self.nodes)
