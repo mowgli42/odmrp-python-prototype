@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from odmrp_sim.services.scenarios import load_scenario
+from odmrp_sim.services.scenarios import load_scenario, script_horizon
 from odmrp_sim.sim.engine import SimulationEngine
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -10,8 +10,8 @@ SCENARIO = ROOT / "scenarios" / "basic-mesh.yaml"
 def test_basic_mesh_forms_fg_and_delivers():
     eng = SimulationEngine()
     data = load_scenario(eng, SCENARIO)
-    # Allow flood + JR return to settle
-    eng.run_until(eng.scheduler.now + 0.5)
+    # Advance through scripted ops, then settle flood + JR
+    eng.run_until(script_horizon(data) + 0.5)
 
     fg = sorted(
         nid

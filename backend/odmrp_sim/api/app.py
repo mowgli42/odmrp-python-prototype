@@ -29,7 +29,7 @@ from odmrp_sim.model.super_node import SuperNodePolicy, SuperNodePush
 from odmrp_sim.model.data_plan import DataPlan, ProductMetadata
 from odmrp_sim.services.address_book_svc import apply_super_node_push, load_address_book
 from odmrp_sim.services.data_plan_svc import load_data_plan, resolve_endpoints
-from odmrp_sim.services.scenarios import list_scenarios, load_scenario
+from odmrp_sim.services.scenarios import list_scenarios
 from odmrp_sim.sim.engine import SimMode
 
 VERSION = "0.1.0"
@@ -97,13 +97,11 @@ def get_scenarios() -> dict[str, Any]:
 
 @app.post("/api/network/scenario")
 async def load_network_scenario(name: str = "basic-mesh") -> dict[str, Any]:
-    await session.pause()
     path = SCENARIOS / f"{name}.yaml"
     if not path.exists():
         raise HTTPException(404, f"scenario not found: {name}")
-    async with session._lock:
-        load_scenario(session.engine, path, session.messaging)
-        session.engine.run_until(session.engine.scheduler.now + 0.5)
+    # Schedules script ops; leaves engine paused at t=0 (no eager run_until).
+    await session.load_named_scenario(name)
     return session.engine.snapshot()
 
 

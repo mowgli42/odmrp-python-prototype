@@ -3,11 +3,18 @@
 from pathlib import Path
 
 from odmrp_sim.services.jreap_endpoint import PRODUCT_TYPE_JREAP, MockSaSource, mock_jreap_frame
-from odmrp_sim.services.scenarios import load_scenario
+from odmrp_sim.services.scenarios import load_scenario, script_horizon
 from odmrp_sim.sim.engine import SimulationEngine
 
 ROOT = Path(__file__).resolve().parents[3]
 SCENARIO = ROOT / "scenarios" / "overlay-mesh.yaml"
+
+
+def _load_settled() -> SimulationEngine:
+    eng = SimulationEngine()
+    data = load_scenario(eng, SCENARIO)
+    eng.run_until(script_horizon(data) + 0.5)
+    return eng
 
 
 def test_mock_jreap_frame_roundtrip():
@@ -20,9 +27,7 @@ def test_mock_jreap_frame_roundtrip():
 
 
 def test_unauthorized_interest_denied():
-    eng = SimulationEngine()
-    load_scenario(eng, SCENARIO)
-    eng.run_until(eng.scheduler.now + 0.5)
+    eng = _load_settled()
     # Node 4 is not in Link16-JREAP-A destinations
     result = eng.sa_feed.express_interest(4, PRODUCT_TYPE_JREAP)
     assert result["mint"]["authorized"] is False
@@ -30,9 +35,7 @@ def test_unauthorized_interest_denied():
 
 
 def test_prune_tears_down_leaf_subscription():
-    eng = SimulationEngine()
-    load_scenario(eng, SCENARIO)
-    eng.run_until(eng.scheduler.now + 0.5)
+    eng = _load_settled()
     eng.sa_feed.express_interest(3, PRODUCT_TYPE_JREAP)
     eng.sa_feed.pump(2)
     eng.run_until(eng.scheduler.now + 0.1)
@@ -52,9 +55,7 @@ def test_prune_tears_down_leaf_subscription():
 
 
 def test_interest_stream_end_to_end():
-    eng = SimulationEngine()
-    load_scenario(eng, SCENARIO)
-    eng.run_until(eng.scheduler.now + 0.5)
+    eng = _load_settled()
     consumed: list[tuple[int, int]] = []
 
     def _cb(nid, pid, data, meta):

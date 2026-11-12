@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from odmrp_sim.services.scenarios import list_scenarios, load_scenario
+from odmrp_sim.services.scenarios import list_scenarios, load_scenario, script_horizon
 from odmrp_sim.sim.engine import SimulationEngine
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -23,7 +23,7 @@ def test_list_scenarios_includes_dynamic_mesh():
 def test_dynamic_mesh_forms_and_delivers():
     eng = SimulationEngine()
     data = load_scenario(eng, DYNAMIC)
-    eng.run_until(eng.scheduler.now + 0.5)
+    eng.run_until(script_horizon(data) + 0.5)
 
     assert len(eng.hosts) == 16
     native_ids = sorted(i for i, h in eng.hosts.items() if h.impl_name == "native")
@@ -55,11 +55,12 @@ def test_dynamic_mesh_forms_and_delivers():
 def test_scripted_move_and_mobility_armed():
     eng = SimulationEngine()
     load_scenario(eng, DYNAMIC)
-    # Script restores node 1 to the grid after the corridor break.
+    # At t=0 the script has not moved node 1 yet — still on the grid spawn.
     pos = eng.hosts[1].pos
     assert abs(pos.x - 120) < 1e-6 and abs(pos.y - 0) < 1e-6
-    # Waypoint mobility should have been armed during load.
+    # Waypoint mobility should have been armed during load (first tick scheduled).
     assert any(e.kind == "sim" and e.payload.get("op") == "mobility" for e in eng.bus.ring)
+    assert any(e.kind == "mobility" for e in eng.scheduler._heap)
     # Advance past the first mobility tick — movers leave their spawn points.
     t0 = eng.scheduler.now
     eng.run_until(t0 + 1.0)
@@ -88,6 +89,10 @@ script:
         encoding="utf-8",
     )
     eng = SimulationEngine()
-    load_scenario(eng, yaml_path)
+    data = load_scenario(eng, yaml_path)
+    assert eng.scheduler.now == 0.0
+    assert eng.hosts[1].pos.x == 100
+    assert eng.hosts[1].pos.y == 0
+    eng.run_until(script_horizon(data))
     assert eng.hosts[1].pos.x == 200
     assert eng.hosts[1].pos.y == 50

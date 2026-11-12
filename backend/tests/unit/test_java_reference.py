@@ -12,7 +12,7 @@ import pytest
 
 from odmrp_sim.protocol.external_node import ExternalProcessNode
 from odmrp_sim.protocol.wire import packet_from_wire, packet_to_wire
-from odmrp_sim.services.scenarios import load_scenario
+from odmrp_sim.services.scenarios import load_scenario, script_horizon
 from odmrp_sim.sim.engine import SimulationEngine
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -101,7 +101,7 @@ def _run(default_impl: str, node_impls: dict | None = None, jar: Path | None = N
     if node_impls:
         eng.set_node_impls(node_impls)
     data = load_scenario(eng, SCENARIO)
-    eng.run_until(eng.scheduler.now + 0.5)
+    eng.run_until(script_horizon(data) + 0.5)
     compact, fg, delivered = _compact(eng)
     for host in eng.hosts.values():
         if isinstance(host.impl, ExternalProcessNode):

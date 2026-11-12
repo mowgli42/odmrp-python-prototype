@@ -159,8 +159,22 @@ class SimStore {
     this.deliveries = 0
     this.lastEvent = null
     this.flashDrops = []
+    this.flashRecs = []
     this.#seenSeq.clear()
     this.#lastSeq = 0
+  }
+
+  #disconnectWs() {
+    const prev = this.#ws
+    this.#wsGen += 1
+    this.#ws = null
+    this.connected = false
+    if (prev) {
+      prev.onclose = null
+      prev.onerror = null
+      prev.onmessage = null
+      prev.close()
+    }
   }
 
   async bootstrap() {
@@ -175,12 +189,13 @@ class SimStore {
 
   async loadScenario(name: string) {
     this.scenarioName = name
-    await api.loadScenario(name)
-    const snap = await api.network()
-    this.applySnapshot(snap)
+    // Drop residual WS/trace state before reload so UI matches t=0 paused.
     this.#clearTrace()
-    // Replay the whole ring so the Trace panel shows mesh-formation events
-    // that happened during scenario load (before the socket opened).
+    this.#disconnectWs()
+    const snap = await api.loadScenario(name)
+    this.applySnapshot(snap)
+    // Start the socket after the load seq so Trace stays empty until Play.
+    this.#lastSeq = typeof snap.last_seq === 'number' ? snap.last_seq : 0
     this.connectWs()
   }
 
@@ -314,8 +329,13 @@ class SimStore {
   }
 
   async reset() {
-    await api.reset()
-    await this.loadScenario(this.scenarioName)
+    // Backend reset pauses, clears, and reloads the current scenario at t=0.
+    this.#clearTrace()
+    this.#disconnectWs()
+    const snap = await api.reset()
+    this.applySnapshot(snap)
+    this.#lastSeq = typeof snap.last_seq === 'number' ? snap.last_seq : 0
+    this.connectWs()
   }
 
   async send(text: string) {
