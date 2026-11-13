@@ -13,6 +13,7 @@ from odmrp_sim.model.packets import (
     NodeId,
     Packet,
     PacketKind,
+    make_data,
     make_data_with_jq,
     make_join_reply,
 )
@@ -46,6 +47,8 @@ class PythonODMRPNode:
     _sessions: dict[GroupId, SourceSession] = field(default_factory=dict)
     _inbox: list[InboxItem] = field(default_factory=list)
     _jr_seq: int = 0
+    # ADR-001: one per-source sequence space shared across groups (and JQ/data).
+    _next_seq: int = 1
     _pending_jr: list[_PendingJR] = field(default_factory=list)
     _jr_sent: dict[GroupId, frozenset[tuple[NodeId, NodeId]]] = field(default_factory=dict)
     _queued_payloads: dict[GroupId, list[bytes]] = field(default_factory=dict)
@@ -57,6 +60,7 @@ class PythonODMRPNode:
         self.params = params
         self._rng = SeededRng(rng_seed)
         self._cache = MessageCache(params.message_cache_size)
+        self._next_seq = 1
 
     def set_membership(self, group: GroupId, member: bool, now: float) -> list[Packet]:
         self._now = now
@@ -67,14 +71,22 @@ class PythonODMRPNode:
         return []
 
     def originate(self, group: GroupId, payload: bytes, now: float) -> list[Packet]:
+        """Originate application data.
+
+        ADR-008 / oms-sa: after ``mesh_established``, emit pure DATA (no Join Query)
+        so periodic multi-source reports do not flood the graph. Until the mesh
+        exists, piggyback a Join Query (ADR-002) so the FG can form. Mesh refresh
+        still uses ``_emit_join_query`` from ``advance`` on ``route_refresh_interval``.
+        """
         self._now = now
         session = self._sessions.get(group)
         if session is None:
-            session = SourceSession(group=group, next_seq=1)
+            session = SourceSession(group=group, next_seq=self._next_seq)
             self._sessions[group] = session
         session.last_data_at = now
-        # Queue payload; send with JQ (piggyback)
         self._queued_payloads.setdefault(group, []).append(payload)
+        if session.mesh_established:
+            return self._emit_pure_data(group, now)
         return self._emit_join_query(group, now, force_payload=True)
 
     def receive(self, packet: Packet, previous_hop: NodeId, now: float) -> list[Packet]:
@@ -146,8 +158,17 @@ class PythonODMRPNode:
 
     # --- internals ---------------------------------------------------------
 
+    def _alloc_seq(self, session: SourceSession) -> int:
+        """Allocate from the node-global sequence space (ADR-001)."""
+        seq = self._next_seq
+        self._next_seq = seqnum.next_seq(seq)
+        session.next_seq = self._next_seq
+        return seq
+
     def _emit_join_query(self, group: GroupId, now: float, *, force_payload: bool) -> list[Packet]:
-        session = self._sessions.setdefault(group, SourceSession(group=group, next_seq=1))
+        session = self._sessions.setdefault(
+            group, SourceSession(group=group, next_seq=self._next_seq)
+        )
         queue = self._queued_payloads.setdefault(group, [])
         if force_payload or queue:
             payload = queue.pop(0) if queue else b""
@@ -155,8 +176,7 @@ class PythonODMRPNode:
         else:
             payload = b""
             piggybacked = False
-        seq = session.next_seq
-        session.next_seq = seqnum.next_seq(seq)
+        seq = self._alloc_seq(session)
         session.last_data_at = now if payload else session.last_data_at
         session.next_refresh_at = now + self.params.route_refresh_interval
         # cache own transmission so we drop echoes
@@ -172,6 +192,28 @@ class PythonODMRPNode:
         # Reset JR suppression for new refresh cycle at receivers/intermediates is per-node;
         # at source we clear our own sent table for this group.
         self._jr_sent.pop(group, None)
+        return [pkt]
+
+    def _emit_pure_data(self, group: GroupId, now: float) -> list[Packet]:
+        """FG-scoped DATA only — no Join Query header (ADR-008)."""
+        session = self._sessions.setdefault(
+            group, SourceSession(group=group, next_seq=self._next_seq)
+        )
+        queue = self._queued_payloads.setdefault(group, [])
+        payload = queue.pop(0) if queue else b""
+        seq = self._alloc_seq(session)
+        session.last_data_at = now
+        # Keep refresh armed so soft-state mesh continues without per-report floods.
+        if session.next_refresh_at is None:
+            session.next_refresh_at = now + self.params.route_refresh_interval
+        self._cache.add(self.node_id, seq, now)
+        pkt = make_data(
+            source=self.node_id,
+            group=group,
+            seq=seq,
+            payload=payload,
+            ttl=self.params.join_query_ttl,
+        )
         return [pkt]
 
     def _handle_data_or_jq(self, packet: Packet, previous_hop: NodeId, now: float) -> list[Packet]:
@@ -306,6 +348,7 @@ class PythonODMRPNode:
                 index=app.index,
                 total=app.total,
                 t=now,
+                platform_id=app.platform_id,
             )
         )
 

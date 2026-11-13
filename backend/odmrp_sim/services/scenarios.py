@@ -92,6 +92,10 @@ def load_scenario(engine: SimulationEngine, path: Path | str, messaging=None) ->
     if link_model:
         arm_markov_links(engine, link_model)
 
+    oms_sa = data.get("oms_sa")
+    if oms_sa:
+        _apply_oms_sa(engine, oms_sa)
+
     engine.mode = SimMode.PAUSED
     engine.bus.emit(engine.scheduler.now, -1, "sim", op="load", seed=seed, scenario=engine.scenario)
     return data
@@ -175,6 +179,19 @@ def _apply_overlay(engine: SimulationEngine, overlay: dict[str, Any]) -> None:
         if engine.address_book is not None:
             plan = resolve_endpoints(plan, engine.address_book)
         engine.bind_data_plan(plan)
+
+
+def _apply_oms_sa(engine: SimulationEngine, oms_sa: dict[str, Any]) -> None:
+    """Configure and optionally activate OMS SA publishers from scenario YAML."""
+    cfg = dict(oms_sa.get("config") or oms_sa)
+    # Nested keys that are not config fields
+    nodes = oms_sa.get("nodes")
+    activate = bool(oms_sa.get("activate", True))
+    for key in ("nodes", "activate", "config"):
+        cfg.pop(key, None)
+    engine.oms_sa.configure(cfg, validate=True)
+    if activate:
+        engine.oms_sa.activate(nodes)
 
 
 def list_scenarios(scenarios_dir: Path | str) -> list[dict[str, Any]]:

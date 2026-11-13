@@ -81,9 +81,11 @@ class SimulationEngine:
         self.topology.on_change(self._on_topo)
         self._rebind_neighbors()
         self.gateway = GatewayService(self, gateway_id=self.gateway_id)
+        from odmrp_sim.services.oms_sa import OmsSaService
         from odmrp_sim.services.sa_feed import SaFeedService
 
         self.sa_feed = SaFeedService(self)
+        self.oms_sa = OmsSaService(self)
 
     def reset(self, *, seed: int | None = None, params: ProtocolParams | None = None) -> None:
         if seed is not None:
@@ -118,12 +120,14 @@ class SimulationEngine:
         self.topology.on_change(self._on_topo)
         self._rebind_neighbors()
         from odmrp_sim.services.gateway import GatewayService
+        from odmrp_sim.services.oms_sa import OmsSaService
         from odmrp_sim.services.sa_feed import SaFeedService
 
         if hasattr(self, "sa_feed"):
             self.sa_feed.close_endpoint()
         self.gateway = GatewayService(self, gateway_id=self.gateway_id)
         self.sa_feed = SaFeedService(self)
+        self.oms_sa = OmsSaService(self)
         self._next_id = 0
         reset_packet_ids()
         self.bus.emit(0.0, -1, "sim", op="reset", seed=self.seed)

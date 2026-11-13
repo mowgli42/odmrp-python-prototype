@@ -51,8 +51,8 @@
 - jq_jitter = 0.010 s, jr_delay = 0.025 s
 
 ### ADR-001 — Canonical identifiers
-**Choice**: `NodeId = int` (0..N-1; optional display label); `GroupId = str` (e.g. `"demo"`) that maps 1:1 to a synthetic `224.x.y.z` only at a future wire/RFC 5444 boundary; one per-source `uint32` sequence space shared by Join Query and data, compared with RFC 1982 serial-number arithmetic.
-**Reason**: Removes the IP-vs-name inconsistency across specs; a shared counter matches the draft's "Join Query is a data packet with a header".
+**Choice**: `NodeId = int` (0..N-1; optional display label); `GroupId = str` (e.g. `"demo"`) that maps 1:1 to a synthetic `224.x.y.z` only at a future wire/RFC 5444 boundary; one per-source `uint32` sequence space shared by Join Query and data **across all groups**, compared with RFC 1982 serial-number arithmetic. (`PythonODMRPNode._next_seq` is node-global; per-group `SourceSession.next_seq` mirrors the next value for observability only.)
+**Reason**: Removes the IP-vs-name inconsistency across specs; a shared counter matches the draft's "Join Query is a data packet with a header". Message cache is keyed `(source, seq)` only — per-group counters would collide and drop legitimate multi-group traffic (OMS SA on `oms.sa` after `demo`).
 **Bead**: `odmrp-e47`.
 
 ### ADR-002 — Join Query piggyback

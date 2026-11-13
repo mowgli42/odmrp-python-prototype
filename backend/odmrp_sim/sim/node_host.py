@@ -72,6 +72,14 @@ class NodeHost:
         after = self.impl.get_state()
         # Local deliveries
         if len(after.inbox) > len(before.inbox):
+            from odmrp_sim.model.app_payload import OMS_KINDS, AppPayload
+
+            app: AppPayload | None = None
+            if packet.payload:
+                try:
+                    app = AppPayload.decode(packet.payload)
+                except Exception:
+                    app = None
             for item in after.inbox[len(before.inbox) :]:
                 self.bus.emit(
                     now,
@@ -83,7 +91,19 @@ class NodeHost:
                     app_kind=item.app_kind,
                     index=item.index,
                     total=item.total,
+                    platform_id=item.platform_id,
                 )
+                if item.app_kind in OMS_KINDS:
+                    oms = self._oms_sa()
+                    if oms is not None:
+                        oms.on_deliver(
+                            self.id,
+                            app_kind=item.app_kind,
+                            platform_id=item.platform_id,
+                            source=packet.source,
+                            payload=app,
+                            now=now,
+                        )
         # Drop if JR unmatched and nothing tx'd — optional
         if packet.kind == PacketKind.JOIN_REPLY and not pkts:
             # either unmatched or suppressed — not necessarily a drop
@@ -117,14 +137,20 @@ class NodeHost:
                 pkt.previous_hop = self.id
             self.medium.neighbor_send(self.id, pkt, now)
 
-    def _sa_feed(self):
-        """Resolve SaFeedService from the owning engine when present."""
-        # Medium.on_deliver is bound to SimulationEngine._on_deliver
+    def _engine(self):
         cb = getattr(self.medium, "on_deliver", None)
         if cb is None:
             return None
-        eng = getattr(cb, "__self__", None)
+        return getattr(cb, "__self__", None)
+
+    def _sa_feed(self):
+        """Resolve SaFeedService from the owning engine when present."""
+        eng = self._engine()
         return getattr(eng, "sa_feed", None) if eng is not None else None
+
+    def _oms_sa(self):
+        eng = self._engine()
+        return getattr(eng, "oms_sa", None) if eng is not None else None
 
     def _diff_state(self, before, now: float) -> None:
         after = self.impl.get_state()

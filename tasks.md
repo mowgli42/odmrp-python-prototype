@@ -56,10 +56,10 @@ Spec: `specs/java-reference/spec.md`. Beads epic `odmrp-7o1` (parent `odmrp-azt`
 ## Phase 8 – OMS SA distribution (status 1/20 Hz, position 1/5 Hz)
 Spec: `specs/oms-sa-distribution/spec.md`. ADR-008 in `design.md`. Beads epic `odmrp-1df` from `docs/beads/oms-sa-plan.json`. IDs: `docs/beads/oms-sa-ids.json`.
 - [x] Lock ADR-008 (rates, pure DATA after mesh_established, group `oms.sa`) — `odmrp-sp1`
-- [ ] AppPayload `oms_status` / `oms_position` + foreign `platform_id` guard — `odmrp-k2t`
-- [ ] Pure DATA originate when `mesh_established` (P0 storm fix) — `odmrp-abr`
-- [ ] SA publisher timers with phase offset + config validation — `odmrp-bue`
-- [ ] SA consumer store (freshness, stale 2× period, newer wins) — `odmrp-xf8`
-- [ ] Multi-source overlay scenario + Gherkin/BDD — `odmrp-peq`
-- [ ] Metrics: offer load, amplification, drops, delivery, freshness — `odmrp-co7`
+- [x] AppPayload `oms_status` / `oms_position` + foreign `platform_id` guard — `odmrp-k2t`
+- [x] Pure DATA originate when `mesh_established` (P0 storm fix) — `odmrp-abr`
+- [x] SA publisher timers with phase offset + config validation — `odmrp-bue`
+- [x] SA consumer store (freshness, stale 2× period, newer wins) — `odmrp-xf8`
+- [x] Multi-source overlay scenario + Gherkin/BDD — `odmrp-peq`
+- [x] Metrics: offer load, amplification, drops, delivery, freshness — `odmrp-co7`
 - [x] Sequence + overlay sketch docs — `odmrp-1cr`
