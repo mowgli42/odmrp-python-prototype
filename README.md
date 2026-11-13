@@ -70,16 +70,17 @@ specs/
   test-harness/spec.md
   java-reference/spec.md   # minimal Java ODMRPNode + differential tests
   overlay/spec.md          # IPsec tunnel overlay, address book, OMS data plan
+  oms-sa-distribution/spec.md  # peer OMS status 1/20 Hz + position 1/5 Hz (ADR-008)
 docs/
   overlay-ipsec-sketch.md
 fixtures/overlay/          # address-book, data-plan, super-node-push examples
 
   review/          architecture review + adherence matrix
   architecture/    C4, component, data-model, state-machine drawings
-  sequences/       sequence diagrams
+  sequences/       sequence diagrams (incl. 07-oms-sa-distribution)
   mockups/         notional display mockups (SVG)
   implementation-plan.md
-  beads/           beads graph plan and key-to-ID map
+  beads/           beads graph plan and key-to-ID map (oms-sa-plan.json)
 .beads/            beads issue database (bd) + issues.jsonl export
 ```
 

@@ -99,6 +99,13 @@ class ODMRPNode(Protocol):
 - Text messages are single packets (or few if large).
 - Files are split into fixed-size chunks (1 KB), each carrying a transfer-id, sequence, and total count. Receivers reassemble and expose the completed file via a download endpoint.
 
+### ADR-008 — OMS SA dual-rate distribution (status 1/20 Hz, position 1/5 Hz)
+**Choice**: Interpret report rates as **periods** — system status every **20 s** (1/20 Hz), position every **5 s** (1/5 Hz). Reject production periods below 1 s. After `mesh_established` for group `oms.sa`, application originates **pure DATA** (no Join Query header); Join Query continues only on `ROUTE_REFRESH_INTERVAL` (ADR-002 refresh path). All OMS peers are group **members and sources**. `fg_scope` remains `"group"` so one FG serves multi-source SA. Mesh payloads use compact `AppPayload` kinds `oms_status` / `oms_position` (not full UCI XML); edge adapters MAY translate to local OMS/ASB topics. Nodes MUST NOT re-originate a peer's `platform_id`. Consumers apply `generated_at` (newer wins) and mark stale at **2×** the report period.
+**Alternative**: Piggyback JQ on every status/position originate (current `originate()` behaviour); or push all SA through gateway DataPlan unicast (ttl=1 announcements).
+**Reason**: Per-report JQ floods the whole graph (TTL rebroadcast by every node), which becomes a broadcast storm under N concurrent OMS publishers. Pure DATA confines relay to the Forwarding Group; duplicate `(source, seq)` cache preserves loop freedom (draft §6.2). Gateway product paths remain for imagery/JREAP; peer SA is many-to-many soft state, which fits FG multicast.
+**Spec**: `specs/oms-sa-distribution/spec.md`.
+**Bead**: epic `odmrp-1df` (`docs/beads/oms-sa-plan.json`); decision `odmrp-sp1`.
+
 ## Data Structures (per node)
 - Routing table: `source → (next_hop, seq, expires_at)` (draft §3.6.1)
 - Forwarding Group table: `group → (expires_at, refreshed_by, last_refresh)` (draft §3.6.2; ADR-003)
@@ -106,10 +113,11 @@ class ODMRPNode(Protocol):
 - Message cache: `(source, seq) → timestamp` LRU (draft §3.6.3)
 - Source sessions: `group → (next_seq, last_data_at, next_refresh_at, mesh_established)`
 - Sequence number counter (per source, shared by JQ and data)
+- OMS SA consumer store (optional service): `platform_id → {status, position, stale flags}`
 
 ## Out of Scope (captured as beads)
 - Unidirectional link detection and blacklist
 - Join Reply aggregation
 - Mobility prediction / adaptive refresh
 - Full RFC5444 encoding
-- Multi-source concurrent sessions beyond basic support
+- Literal 20 Hz / 5 Hz continuous kinematic streams (see ADR-008)

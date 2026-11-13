@@ -52,3 +52,14 @@ Spec: `specs/java-reference/spec.md`. Beads epic `odmrp-7o1` (parent `odmrp-azt`
 - [x] Sample scenario that forms a mesh and delivers a message
 - [x] Screenshot walkthrough placeholders
 - [x] Beads roadmap for production / multi-language validation
+
+## Phase 8 – OMS SA distribution (status 1/20 Hz, position 1/5 Hz)
+Spec: `specs/oms-sa-distribution/spec.md`. ADR-008 in `design.md`. Beads epic `odmrp-1df` from `docs/beads/oms-sa-plan.json`. IDs: `docs/beads/oms-sa-ids.json`.
+- [x] Lock ADR-008 (rates, pure DATA after mesh_established, group `oms.sa`) — `odmrp-sp1`
+- [ ] AppPayload `oms_status` / `oms_position` + foreign `platform_id` guard — `odmrp-k2t`
+- [ ] Pure DATA originate when `mesh_established` (P0 storm fix) — `odmrp-abr`
+- [ ] SA publisher timers with phase offset + config validation — `odmrp-bue`
+- [ ] SA consumer store (freshness, stale 2× period, newer wins) — `odmrp-xf8`
+- [ ] Multi-source overlay scenario + Gherkin/BDD — `odmrp-peq`
+- [ ] Metrics: offer load, amplification, drops, delivery, freshness — `odmrp-co7`
+- [x] Sequence + overlay sketch docs — `odmrp-1cr`

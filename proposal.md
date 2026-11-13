@@ -20,11 +20,15 @@ The prototype serves dual purposes:
 - Provides a visual, interactive demo suitable for education and validation.
 - Creates a clean boundary (control plane + data plane hooks) so future language implementations can be dropped in and compared against the Python reference.
 
+## Follow-on capability: OMS SA between platforms
+OpenSpec `specs/oms-sa-distribution/spec.md` (ADR-008) adds peer distribution of OMS **system status every 20 s** and **position every 5 s** over the ODMRP mesh (preferred: overlay tunnel mode). Success requires pure-DATA originate after mesh establishment so concurrent publishers do not create Join Query broadcast storms; loops remain suppressed by `(source, seq)` caching and a no-reoriginate rule for foreign `platform_id`.
+
 ## Out of Scope for Initial Prototype
 - Real radio/PHY modeling (packet loss, collisions beyond simple drop probability).
 - Full mobility models (random waypoint can be added later).
 - Authentication, encryption, or production-grade reliability.
 - Distributed multi-process deployment (single-process sim is sufficient for prototype).
+- Literal 20 Hz / 5 Hz continuous kinematic streams (see ADR-008 rate interpretation).
 
 ## Success Criteria
 - A user can open the Svelte UI, see nodes, join a multicast group from one or more nodes, send a message or small file from a source, and observe the ODMRP mesh form and data traverse the forwarding group.

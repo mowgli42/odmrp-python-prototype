@@ -72,6 +72,10 @@ API: `GET/PUT /api/data-plan`, `GET /api/gateway`, `POST /api/gateway/tick`, `PO
 
 `GET /api/sa-feed`, `POST /api/sa-feed/pump` — status and manual pump for the prototype.
 
+## OMS peer SA (status / position) — distinct from JREAP product path
+
+Periodic **OMS system status (every 20 s)** and **position (every 5 s)** between platforms use FG multicast DATA on group `oms.sa`, not gateway ProductLocation minting. See `specs/oms-sa-distribution/spec.md` and ADR-008: after `mesh_established`, reports MUST be pure DATA (no Join Query per report) to avoid multi-source flood storms. JREAP/imagery remain DataPlan + ttl=1 announcements + stream relay.
+
 ## Super-node overlay
 
 Ground / high-capability nodes push:

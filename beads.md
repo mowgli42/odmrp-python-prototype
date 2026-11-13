@@ -44,3 +44,6 @@ Two items (11 and 12) were added by the architecture review (`docs/review/archit
 
 12. **Mobility prediction / adaptive refresh** — `odmrp-c78`  
     Optional GPS/velocity fields in the Join Query, route expiration time (RET) prediction, and E-ODMRP-style adaptive refresh intervals. Builds on the soft-state expiry logic (`odmrp-co6`) and is only meaningful once the mobility models (item 4) exist.
+
+13. **OMS SA peer distribution (status 1/20 Hz, position 1/5 Hz)** — `odmrp-1df`  
+    OpenSpec: `specs/oms-sa-distribution/spec.md` (ADR-008). Pure DATA after mesh establishment so N OMS publishers do not Join-Query-flood every report; shared group `oms.sa`; consumer freshness/stale; SA metrics. Distinct from JREAP/gateway product unicast (`sa_feed`). Plan: `docs/beads/oms-sa-plan.json`; IDs: `docs/beads/oms-sa-ids.json`.
