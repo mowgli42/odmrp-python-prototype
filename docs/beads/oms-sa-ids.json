@@ -1,0 +1,17 @@
+{
+  "ids": {
+    "e-oms-sa": "odmrp-1df",
+    "d-oms-sa-rates": "odmrp-sp1",
+    "oms-payload": "odmrp-k2t",
+    "oms-pure-data": "odmrp-abr",
+    "oms-publisher": "odmrp-bue",
+    "oms-consumer": "odmrp-xf8",
+    "oms-scenario": "odmrp-peq",
+    "oms-metrics": "odmrp-co7",
+    "oms-docs": "odmrp-1cr"
+  },
+  "spec": "specs/oms-sa-distribution/spec.md",
+  "plan": "docs/beads/oms-sa-plan.json",
+  "adr": "ADR-008",
+  "schema_version": 1
+}

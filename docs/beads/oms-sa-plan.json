@@ -1,0 +1,105 @@
+{
+  "commit_message": "OMS SA status/position distribution over ODMRP (OpenSpec + beads)",
+  "nodes": [
+    {
+      "key": "e-oms-sa",
+      "type": "epic",
+      "priority": 1,
+      "labels": ["area:oms", "area:protocol", "area:overlay"],
+      "title": "OMS SA distribution — status 1/20 Hz + position 1/5 Hz over ODMRP",
+      "description": "Distribute OMS system status (every 20 s) and platform position (every 5 s) to all OMS peers on an ODMRP mesh without loops or broadcast storms.\n\nSpec: specs/oms-sa-distribution/spec.md. Builds on specs/odmrp and specs/overlay. Primary risk: today's originate() always piggybacks Join Query (network flood); must add pure-DATA originate after mesh_established.\n\nParent roadmap: related to overlay/SA feed work; does not replace JREAP product path — periodic peer SA is FG multicast DATA.",
+      "acceptance_criteria": "- All Gherkin scenarios in specs/oms-sa-distribution/spec.md have pytest-bdd (or unit) coverage and pass.\n- After mesh_established, oms_status/oms_position originates are pure DATA (no JQ header).\n- Multi-source N-node scenario delivers peer reports without re-originate loops.\n- Metrics for offer load, amplification, dup/not_fg drops, delivery ratio, freshness are available from trace or API.\n- design.md ADR-008 locked."
+    },
+    {
+      "key": "d-oms-sa-rates",
+      "parent_key": "e-oms-sa",
+      "type": "decision",
+      "priority": 1,
+      "labels": ["area:oms", "decision"],
+      "title": "ADR-008 — Dual-rate planes and OMS SA rate interpretation",
+      "description": "Lock: (1) 1/20 Hz status = period 20 s; 1/5 Hz position = period 5 s; reject production periods < 1 s. (2) Mesh JQ refresh remains ROUTE_REFRESH_INTERVAL; app reports are pure DATA after mesh_established. (3) Default group oms.sa; optional split groups via config. (4) fg_scope stays group. (5) Compact AppPayload kinds oms_status / oms_position — not full UCI XML on mesh.",
+      "acceptance_criteria": "- ADR-008 written in design.md.\n- Spec overview rates table matches ADR.\n- Bead closed with decision recorded."
+    },
+    {
+      "key": "oms-payload",
+      "parent_key": "e-oms-sa",
+      "type": "task",
+      "priority": 1,
+      "labels": ["area:oms", "area:messaging"],
+      "title": "AppPayload oms_status / oms_position encode-decode + platform_id guard",
+      "description": "Extend AppPayload with kinds oms_status and oms_position. Fields per specs/oms-sa-distribution/spec.md. Originate path MUST reject payloads whose platform_id does not match the local node mapping. Prefer compact JSON or structured dict encoding suitable for mesh MTU; document size budget.",
+      "acceptance_criteria": "- Round-trip encode/decode unit tests.\n- Foreign platform_id originate rejected.\n- Inbox / SA store exposes kind and platform_id."
+    },
+    {
+      "key": "oms-pure-data",
+      "parent_key": "e-oms-sa",
+      "type": "task",
+      "priority": 0,
+      "labels": ["area:protocol"],
+      "title": "Pure DATA originate after mesh_established (no JQ flood per report)",
+      "description": "P0 storm fix. Add originate_data (or originate flag) on ODMRPNode / PythonODMRPNode / engine / messaging: when session.mesh_established, emit DATA without JoinQueryHeader; still use shared seq space and message cache. First originate or refresh path retains ADR-002 JQ piggyback. Update external-node contract + FakeNode. Do not change FG/dup-cache receive rules.",
+      "acceptance_criteria": "- Spec scenarios 'Subsequent position reports are pure DATA' and 'Mesh refresh still emits Join Query on interval' pass.\n- Trace shows JQ count decoupled from position originate count.\n- Java parity tracked as follow-up note if deferred."
+    },
+    {
+      "key": "oms-publisher",
+      "parent_key": "e-oms-sa",
+      "type": "task",
+      "priority": 1,
+      "labels": ["area:oms", "area:services"],
+      "title": "OMS SA publisher service — status/position timers with phase offset",
+      "description": "New service (e.g. services/oms_sa.py) driven by sim clock: status_period_s=20, position_period_s=5, per-node phase offsets. Starts only when node is active OMS peer + group member. Uses pure-DATA originate when mesh established. Config validation rejects unsafe periods in production mode.",
+      "acceptance_criteria": "- Spec timer scenarios pass.\n- Phase offsets desynchronize N nodes in unit test.\n- Production config validation scenario passes."
+    },
+    {
+      "key": "oms-consumer",
+      "parent_key": "e-oms-sa",
+      "type": "task",
+      "priority": 2,
+      "labels": ["area:oms", "area:services"],
+      "title": "OMS SA consumer store — freshness, stale at 2× period, newer wins",
+      "description": "Per-node store keyed by platform_id for latest status and position. Apply generated_at ordering (newer wins; late older ignored). Mark stale when age > 2× configured period. Optional hook to emit edge uci.platform.status-shaped events for local ASB adapters (document only or thin callback).",
+      "acceptance_criteria": "- Spec stale and newer-generated_at scenarios pass.\n- API or get_state exposes peer SA snapshot with stale flags."
+    },
+    {
+      "key": "oms-scenario",
+      "parent_key": "e-oms-sa",
+      "type": "task",
+      "priority": 1,
+      "labels": ["area:oms", "area:harness"],
+      "title": "Scenario + Gherkin: multi-source oms.sa on overlay-mesh",
+      "description": "Add scenarios/oms-sa-mesh.yaml (or extend overlay-mesh) with N members all sources. pytest-bdd steps for specs/oms-sa-distribution scenarios: multi-source delivery, no foreign re-originate, pure DATA vs JQ counts, tunnel unicast-over-neighbors.",
+      "acceptance_criteria": "- BDD scenarios for multi-source status/position pass.\n- Assert Join Query flood count == refresh count not position count for a settled window.\n- Fixture checked into scenarios/ and optionally fixtures/overlay/."
+    },
+    {
+      "key": "oms-metrics",
+      "parent_key": "e-oms-sa",
+      "type": "task",
+      "priority": 2,
+      "labels": ["area:oms", "area:observability"],
+      "title": "SA metrics: offer load, amplification, drops, delivery, freshness, overhead",
+      "description": "Summarize from trace/event bus: offer msgs/s, TX amplification (flood vs FG), dup drop rate, not_fg drop rate, delivery ratio, freshness age p95, control overhead (JQ+JR bytes/DATA bytes), message_cache occupancy. Expose via GET /api/oms-sa/metrics or extend gateway/sa status. Align with roadmap observability bead odmrp-5z4 but keep SA-specific summary usable in prototype without OTel.",
+      "acceptance_criteria": "- Spec 'Trace supports amplification accounting' passes.\n- Documented metric definitions in spec or docs/architecture note."
+    },
+    {
+      "key": "oms-docs",
+      "parent_key": "e-oms-sa",
+      "type": "task",
+      "priority": 3,
+      "labels": ["area:oms", "docs"],
+      "title": "Docs: sequence + overlay sketch for OMS SA dual-rate path",
+      "description": "Add docs/sequences/07-oms-sa-distribution.md (mesh form → pure DATA status/position → refresh JQ). Update docs/overlay-ipsec-sketch.md with SA peer multicast vs JREAP product path distinction. Point README OpenSpec structure at specs/oms-sa-distribution.",
+      "acceptance_criteria": "- Sequence doc merged.\n- Overlay sketch mentions oms_status/oms_position rates and pure DATA rule.\n- README lists the new spec."
+    }
+  ],
+  "edges": [
+    {"from_key": "oms-payload", "to_key": "d-oms-sa-rates", "type": "blocks"},
+    {"from_key": "oms-pure-data", "to_key": "d-oms-sa-rates", "type": "blocks"},
+    {"from_key": "oms-publisher", "to_key": "oms-payload", "type": "blocks"},
+    {"from_key": "oms-publisher", "to_key": "oms-pure-data", "type": "blocks"},
+    {"from_key": "oms-consumer", "to_key": "oms-payload", "type": "blocks"},
+    {"from_key": "oms-scenario", "to_key": "oms-publisher", "type": "blocks"},
+    {"from_key": "oms-scenario", "to_key": "oms-consumer", "type": "blocks"},
+    {"from_key": "oms-metrics", "to_key": "oms-scenario", "type": "blocks"},
+    {"from_key": "oms-docs", "to_key": "d-oms-sa-rates", "type": "blocks"}
+  ]
+}

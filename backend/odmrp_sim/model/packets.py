@@ -185,6 +185,28 @@ def make_data_with_jq(
     )
 
 
+def make_data(
+    *,
+    source: NodeId,
+    group: GroupId,
+    seq: int,
+    payload: bytes,
+    ttl: int,
+) -> Packet:
+    """Pure DATA (no Join Query) — FG-scoped forward after mesh_established (ADR-008)."""
+    return Packet(
+        kind=PacketKind.DATA,
+        source=source,
+        group=group,
+        seq=seq,
+        previous_hop=source,
+        ttl=ttl,
+        hop_count=0,
+        join_query=None,
+        payload=payload,
+    )
+
+
 def make_join_reply(
     *,
     source: NodeId,

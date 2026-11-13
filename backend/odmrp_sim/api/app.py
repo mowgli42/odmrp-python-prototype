@@ -458,6 +458,65 @@ async def sa_feed_pump(n: int = 3) -> dict[str, Any]:
     return {"pumped": pumped, "sa_feed": session.engine.sa_feed.status()}
 
 
+@app.get("/api/oms-sa")
+def get_oms_sa() -> dict[str, Any]:
+    return session.engine.oms_sa.status()
+
+
+@app.get("/api/oms-sa/metrics")
+def get_oms_sa_metrics() -> dict[str, Any]:
+    return session.engine.oms_sa.metrics()
+
+
+@app.put("/api/oms-sa/config")
+async def put_oms_sa_config(body: dict[str, Any]) -> dict[str, Any]:
+    """Configure OMS SA periods / phases. Production rejects periods < 1 s."""
+    from odmrp_sim.services.oms_sa import OmsSaConfigError
+
+    try:
+        cfg = session.engine.oms_sa.configure(body, validate=True)
+    except OmsSaConfigError as e:
+        raise HTTPException(400, str(e)) from e
+    return cfg.to_dict()
+
+
+@app.post("/api/oms-sa/activate")
+async def activate_oms_sa(body: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Join oms.sa and arm status/position publishers for listed (or all) nodes."""
+    from odmrp_sim.services.oms_sa import OmsSaConfigError
+
+    body = body or {}
+    if body.get("config"):
+        try:
+            session.engine.oms_sa.configure(body["config"], validate=True)
+        except OmsSaConfigError as e:
+            raise HTTPException(400, str(e)) from e
+    nodes = body.get("nodes")
+    try:
+        result = session.engine.oms_sa.activate(nodes)
+    except OmsSaConfigError as e:
+        raise HTTPException(400, str(e)) from e
+    return result
+
+
+@app.post("/api/oms-sa/publish")
+async def publish_oms_sa(body: dict[str, Any]) -> dict[str, Any]:
+    """Manually publish one oms_status or oms_position from a node."""
+    from odmrp_sim.services.oms_sa import OmsSaConfigError
+
+    node_id = int(body["node_id"])
+    kind = str(body.get("kind") or "oms_position")
+    try:
+        if kind == "oms_status":
+            mid = session.engine.oms_sa.publish_status(node_id, **{k: v for k, v in body.items() if k not in ("node_id", "kind")})
+        else:
+            mid = session.engine.oms_sa.publish_position(node_id, **{k: v for k, v in body.items() if k not in ("node_id", "kind")})
+    except OmsSaConfigError as e:
+        raise HTTPException(400, str(e)) from e
+    session.engine.run_until(session.engine.scheduler.now + 0.2)
+    return {"message_id": mid, "oms_sa": session.engine.oms_sa.status()}
+
+
 @app.post("/api/super-node/push")
 async def super_node_push(body: dict[str, Any]) -> dict[str, Any]:
     book = session.engine.address_book

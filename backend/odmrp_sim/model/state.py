@@ -64,6 +64,7 @@ class InboxItem:
     index: int | None = None
     total: int | None = None
     t: float = 0.0
+    platform_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

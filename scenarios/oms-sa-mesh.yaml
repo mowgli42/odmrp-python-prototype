@@ -1,0 +1,40 @@
+name: oms-sa-mesh
+description: >
+  Multi-source OMS SA over overlay tunnels — every node publishes status (20 s)
+  and position (5 s) on group oms.sa; pure DATA after mesh_established (ADR-008).
+seed: 42
+range: 130
+overlay:
+  mode: tunnel
+  address_book: fixtures/overlay/address-book.json
+  data_plan: fixtures/overlay/data-plan.json
+  super_node_push: fixtures/overlay/super-node-push.json
+params:
+  route_refresh_interval: 3.0
+  fg_timeout: 9.0
+  route_timeout: 9.0
+  jq_jitter: 0.0
+  jr_delay: 0.0
+  hop_delay: 0.001
+nodes:
+  - { id: 0, x: 100, y: 200, callsign: GND-SUPER }
+  - { id: 1, x: 200, y: 120, callsign: RELAY-A }
+  - { id: 2, x: 200, y: 280, callsign: RELAY-B }
+  - { id: 3, x: 300, y: 120, callsign: RCV-EAST }
+  - { id: 4, x: 300, y: 280, callsign: EDGE-S }
+  - { id: 5, x: 400, y: 200, callsign: RCV-FAR }
+oms_sa:
+  activate: true
+  nodes: [0, 1, 2, 3, 5]
+  config:
+    group: oms.sa
+    status_period_s: 20.0
+    position_period_s: 5.0
+    production: true
+    status_phase_s: { "0": 0.5, "1": 1.0, "2": 1.5, "3": 2.0, "5": 2.5 }
+    position_phase_s: { "0": 0.1, "1": 0.2, "2": 0.3, "3": 0.4, "5": 0.5 }
+    platform_ids: { "0": "plt-0", "1": "plt-1", "2": "plt-2", "3": "plt-3", "5": "plt-5" }
+script: []
+expect:
+  oms_group: oms.sa
+  active_publishers: [0, 1, 2, 3, 5]
